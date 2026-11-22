@@ -27,11 +27,11 @@ from dificultad import NIVELES, ORDEN_NIVELES
 def jugar_episodio(agente, config, seed):
     env = BatallaNavalEnv(config=config, seed=seed)
     obs = env.para_sentidos()
-    agente.reiniciar(config, seed=seed)
+    agente.restart(seed=seed)
     tiempo = 0.0
     while not env.done:
         t0 = time.perf_counter()
-        accion = agente.elegir_accion(obs)
+        accion = agente.make_decision(obs)
         tiempo += time.perf_counter() - t0
         obs, _, _, _ = env.step(accion)
     return {
