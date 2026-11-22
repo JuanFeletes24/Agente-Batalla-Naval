@@ -222,8 +222,16 @@ class BatallaNavalEnv:
         plt.tight_layout()
         plt.show()
 
-    def render(self, mapa_calor: np.ndarray = None):
-        fig, ax = plt.subplots(figsize=(7, 6))
+    def render(self, mapa_calor: np.ndarray = None, ax=None):
+        """
+        Dibuja el tablero del agente. Si se pasa un 'ax', dibuja sobre el
+        (sin abrir otra figura ni llamar a plt.show), util para juegos interactivos.
+        """
+        propio = ax is None
+        if propio:
+            fig, ax = plt.subplots(figsize=(7, 6))
+        else:
+            ax.clear()
 
         if mapa_calor is not None:
             sns.heatmap(mapa_calor, annot=True, fmt=".2f", cmap="coolwarm", cbar=True, square=True, ax=ax)
@@ -268,9 +276,10 @@ class BatallaNavalEnv:
         ax.set_yticks([i + 0.5 for i in range(self.filas)])
         ax.set_yticklabels([str(i) for i in range(self.filas)])
         
-        ax.set_title(f"Turno: {self.turnos} | Barcos vivos: {len([b for b in self.barcos if not b.esta_hundido()])}/5 | Recompensa: {self.recompensa_acumulada}", fontsize=13, weight='bold', pad=12)
-        plt.tight_layout()
-        plt.show()           
+        ax.set_title(f"Turno: {self.turnos} | Barcos vivos: {len([b for b in self.barcos if not b.esta_hundido()])}/{len(self.barcos)} | Recompensa: {self.recompensa_acumulada}", fontsize=13, weight='bold', pad=12)
+        if propio:
+            plt.tight_layout()
+            plt.show()
 
 
 
