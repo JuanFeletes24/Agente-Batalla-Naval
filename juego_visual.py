@@ -1,48 +1,57 @@
 """
 Batalla Naval para una persona - version visual con pygame.
 
-Usa el motor de ambientes.py (BatallaNavalEnv) para toda la logica y este
-archivo solo se encarga de dibujar: fondo de agua, barcos por secciones,
+Usa el motor de ambientes.py (BatallaNavalEnv) y los niveles de dificultad de
+dificultad.py. Este archivo solo dibuja: fondo de agua, barcos por secciones,
 estela animada, explosiones y salpicaduras.
 
 Uso:
-    python juego_visual.py
-    python juego_visual.py --semilla 7
+    python juego_visual.py                    # nivel medio
+    python juego_visual.py --nivel experto    # facil | medio | dificil | experto
+    python juego_visual.py --semilla 7        # misma flota en la primera partida
 
 Controles:
     clic izquierdo -> disparar
-    R              -> nueva partida
-    V              -> rendirse y ver la flota
-    ESC            -> salir
+    1-4 (o clic en el panel) -> cambiar de nivel y empezar de nuevo
+    R -> nueva partida      V -> rendirse y ver la flota      ESC -> salir
 """
 
 import argparse
 import os
 import string
-import sys
 
 import pygame
 
 from ambientes import BatallaNavalEnv, DESCONOCIDO, AGUA, TOCADO, HUNDIDO
+from dificultad import NIVELES, ORDEN_NIVELES
 from utils import coord_a_texto, mensaje_feedback, calificacion
 
 # ---------------------------------------------------------------------------
 # CONFIGURACION
 # ---------------------------------------------------------------------------
 
-FILAS = 10
-COLUMNAS = 10
-TILE = 64                     # lado de cada casilla en pixeles
-MARGEN = 36                   # espacio para las letras/numeros de coordenadas
-PANEL_W = 260                 # panel lateral
-BARRA_H = 64                  # barra de mensajes inferior
+AREA = 640                    # el tablero ocupa siempre 640x640 px (la casilla se ajusta)
+MARGEN = 36                   # espacio para letras/numeros de coordenadas
+PANEL_W = 260
+BARRA_H = 64
 FPS = 60
-
-TABLERO_W = COLUMNAS * TILE
-TABLERO_H = FILAS * TILE
 OX, OY = MARGEN, MARGEN       # esquina superior izquierda del tablero
-ANCHO = MARGEN + TABLERO_W + 16 + PANEL_W
-ALTO = MARGEN + TABLERO_H + BARRA_H
+ANCHO = MARGEN + AREA + 16 + PANEL_W
+ALTO = MARGEN + AREA + BARRA_H
+PANEL_X = MARGEN + AREA + 16
+
+# Geometria que depende del nivel (la fija configurar_geometria)
+FILAS = COLUMNAS = 10
+TILE = AREA // 10
+TABLERO_W = TABLERO_H = AREA
+
+
+def configurar_geometria(filas, columnas):
+    global FILAS, COLUMNAS, TILE, TABLERO_W, TABLERO_H
+    FILAS, COLUMNAS = filas, columnas
+    TILE = AREA // max(filas, columnas)
+    TABLERO_W, TABLERO_H = columnas * TILE, filas * TILE
+
 
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
@@ -57,14 +66,14 @@ C_HUNDIDO = (255, 90, 80)
 C_VICTORIA = (110, 230, 140)
 C_GRID = (255, 255, 255, 55)
 
-# Que sprite usa cada barco y que tamano de estela. Cambialo a tu gusto.
-# (cuerpo sano, cuerpo destruido, tamano de estela)
+# Sprite de cada barco: (cuerpo sano, cuerpo destruido, tamano de estela)
 SPRITES_BARCO = {
     'Portaaviones': ("ship_large_body", "ship_large_body_destroyed", "big"),
     'Acorazado':    ("ship_medium_body_b", "ship_medium_body_b_destroyed", "big"),
     'Crucero':      ("ship_medium_body", "ship_medium_body_destroyed", "medium"),
     'Submarino':    ("ship_small_b_body", "ship_small_body_b_destroyed", "medium"),
     'Destructor':   ("ship_small_body", "ship_small_body_destroyed", "small"),
+    'Lancha':       ("ship_small_b_body", "ship_small_body_b_destroyed", "small"),
 }
 SPRITE_POR_DEFECTO = ("ship_small_body", "ship_small_body_destroyed", "small")
 
@@ -86,12 +95,11 @@ def cargar_fondo_cuadrado(ruta, ancho, alto):
     return img.subsurface(pygame.Rect(0, 0, ancho, alto)).copy()
 
 
-def cargar_explosion(filas_frames=1, ancho_frame=32):
+def cargar_explosion(ancho_frame=32):
     """La hoja es de 192x32: 6 cuadros de 32x32."""
     hoja = _img("explosion.png")
-    n = hoja.get_width() // ancho_frame
     frames = []
-    for i in range(n):
+    for i in range(hoja.get_width() // ancho_frame):
         f = hoja.subsurface(pygame.Rect(i * ancho_frame, 0, ancho_frame, hoja.get_height())).copy()
         frames.append(pygame.transform.scale(f, (TILE, TILE)))
     return frames
@@ -111,15 +119,11 @@ def cortar_barco(nombre_archivo, n, horizontal):
 
 def cargar_estela(tamano, n, horizontal):
     """Carga los 5 cuadros de la estela, un poco mas grandes que el barco."""
-    ancho = int(TILE * 1.25)
-    alto = int(TILE * n * 1.15)
+    ancho, alto = int(TILE * 1.25), int(TILE * n * 1.15)
     frames = []
     for i in range(5):
-        f = _img(f"water_ripple_{tamano}_00{i}.png")
-        f = pygame.transform.scale(f, (ancho, alto))
-        if horizontal:
-            f = pygame.transform.rotate(f, 90)
-        frames.append(f)
+        f = pygame.transform.scale(_img(f"water_ripple_{tamano}_00{i}.png"), (ancho, alto))
+        frames.append(pygame.transform.rotate(f, 90) if horizontal else f)
     return frames
 
 
@@ -141,26 +145,26 @@ class VistaBarco:
         self.sprites_danados = cortar_barco(destruido, n, self.horizontal)
         self.frames_estela = cargar_estela(tam_estela, n, self.horizontal)
 
-        # rectangulo (en pixeles de pantalla) que ocupa todo el barco
         r0, c0 = self.casillas[0]
         w = TILE * n if self.horizontal else TILE
         h = TILE if self.horizontal else TILE * n
         self.rect = pygame.Rect(OX + c0 * TILE, OY + r0 * TILE, w, h)
 
-    def dibujar(self, pantalla, tablero_agente, revelado, ahora):
+    def dibujar(self, pantalla, tablero_agente, revelado, ahora, ruido):
         hundido = self.barco.esta_hundido()
 
-        # 1) estela animada, solo cuando se muestra la flota entera (rendicion)
+        # estela animada: solo cuando se muestra la flota entera
         if revelado and not hundido:
-            idx = (ahora // 140) % len(self.frames_estela)
-            frame = self.frames_estela[idx]
+            frame = self.frames_estela[(ahora // 140) % len(self.frames_estela)]
             pantalla.blit(frame, frame.get_rect(center=self.rect.center))
 
-        # 2) secciones del barco
         for i, (r, c) in enumerate(self.casillas):
-            golpeada = tablero_agente[r][c] in (TOCADO, HUNDIDO)
+            estado = tablero_agente[r][c]
+            # con sonar ruidoso un "tocado" no es fiable: se dibuja como marca neutra
+            # (el sprite solo aparece cuando el barco esta confirmado como hundido)
+            golpeada = estado == HUNDIDO or (estado == TOCADO and not ruido)
             if not golpeada and not revelado:
-                continue  # sigue oculta bajo el agua
+                continue
             sprite = self.sprites_danados[i] if golpeada else self.sprites_sanos[i]
             pantalla.blit(sprite, (OX + c * TILE, OY + r * TILE))
 
@@ -216,19 +220,37 @@ class SalpicaduraAnimada:
 
 class JuegoVisual:
 
-    def __init__(self, seed=None):
+    def __init__(self, nivel='medio', seed=None):
         pygame.init()
         self.pantalla = pygame.display.set_mode((ANCHO, ALTO))
         pygame.display.set_caption("Batalla Naval")
         self.reloj = pygame.time.Clock()
 
-        self.fuente_titulo = pygame.font.SysFont("segoeui,arial,helvetica,dejavusans", 24, bold=True)
-        self.fuente_msg = pygame.font.SysFont("segoeui,arial,helvetica,dejavusans", 26, bold=True)
-        self.fuente = pygame.font.SysFont("segoeui,arial,helvetica,dejavusans", 19)
-        self.fuente_peq = pygame.font.SysFont("segoeui,arial,helvetica,dejavusans", 15)
-        self.fuente_grande = pygame.font.SysFont("segoeui,arial,helvetica,dejavusans", 54, bold=True)
+        fam = "segoeui,arial,helvetica,dejavusans"
+        self.fuente_titulo = pygame.font.SysFont(fam, 24, bold=True)
+        self.fuente_msg = pygame.font.SysFont(fam, 26, bold=True)
+        self.fuente = pygame.font.SysFont(fam, 19)
+        self.fuente_peq = pygame.font.SysFont(fam, 15)
+        self.fuente_grande = pygame.font.SysFont(fam, 54, bold=True)
 
-        # assets que no dependen de la partida
+        # botones de nivel (2x2) en el panel
+        self.botones = []
+        for i, clave in enumerate(ORDEN_NIVELES):
+            rect = pygame.Rect(PANEL_X + 20 + (i % 2) * 108, 58 + (i // 2) * 30, 104, 26)
+            self.botones.append((rect, clave))
+
+        self.seed = seed          # solo se usa para la primera partida
+        self.mejores = {}         # mejor marca de la sesion por nivel
+        self._cargar_nivel(nivel)
+
+    # -- estado de la partida ------------------------------------------------
+    def _cargar_nivel(self, nivel):
+        """Cambia de nivel: recalcula la geometria, recursos graficos y crea el entorno."""
+        self.nivel = nivel
+        self.config = NIVELES[nivel]
+        self.ruido = self.config.prob_ruido > 0
+        configurar_geometria(self.config.filas, self.config.columnas)
+
         self.fondo = cargar_fondo_cuadrado(os.path.join(ASSETS, "fondo.jpg"), TABLERO_W, TABLERO_H)
         self.frames_explosion = cargar_explosion()
         self.grid = pygame.Surface((TABLERO_W, TABLERO_H), pygame.SRCALPHA)
@@ -238,26 +260,31 @@ class JuegoVisual:
             pygame.draw.line(self.grid, C_GRID, (0, i * TILE), (TABLERO_W, i * TILE), 2)
         self.velo = pygame.Surface((TABLERO_W, TABLERO_H), pygame.SRCALPHA)
         self.velo.fill((5, 15, 25, 170))
+        self.banda = pygame.Surface((TABLERO_W, 150), pygame.SRCALPHA)
+        self.banda.fill((5, 15, 25, 205))
 
-        self.env = BatallaNavalEnv(filas=FILAS, columnas=COLUMNAS, seed=seed)
-        self.mejor = None
+        self.env = BatallaNavalEnv(config=self.config, seed=self.seed)
+        self.seed = None
         self._preparar_partida()
 
-    # -- estado de la partida ------------------------------------------------
-    def _preparar_partida(self, mensaje="Haz clic en una casilla para disparar."):
+    def _preparar_partida(self, mensaje=None):
         self.vistas = [VistaBarco(b) for b in self.env.barcos]
-        self.efectos = []            # explosiones y salpicaduras activas
+        self.efectos = []
         self.revelado = False
-        self.mensaje = mensaje
+        self.mensaje = mensaje or "Haz clic en una casilla para disparar."
         self.color_msg = C_TEXTO
-        self.resumen = ""            # texto de la pantalla de victoria
+        self.resumen = ""
 
     def nueva_partida(self):
         self.env.reset()
         self._preparar_partida("Nueva partida. ¡Dispara!")
 
+    def cambiar_nivel(self, nivel):
+        self._cargar_nivel(nivel)
+        self.mensaje = f"Nivel {self.config.nombre}. ¡Dispara!"
+
     def rendirse(self):
-        if not self.env.done and not self.revelado:
+        if not self.partida_terminada():
             self.revelado = True
             self.mensaje = "Te rendiste. Pulsa R para jugar de nuevo."
             self.color_msg = C_TEXTO_SUAVE
@@ -269,45 +296,54 @@ class JuegoVisual:
     def disparar(self, r, c):
         if self.partida_terminada():
             return
-        if (r, c) not in self.env.acciones_aplicables():
+        if self.env.tablero_agente[r][c] != DESCONOCIDO:
             self.mensaje = f"Ya disparaste en {coord_a_texto(r, c)}. Elige otra casilla."
             self.color_msg = C_TEXTO_SUAVE
             return
 
         self.env.step((r, c))
         fb = self.env.ultimo_feedback
-        self.mensaje = mensaje_feedback(fb)
+        self.mensaje = mensaje_feedback(fb, self.ruido)
 
+        # los efectos muestran lo que el sonar REPORTA (puede no ser verdad con ruido)
         if fb['resultado'] == 'agua':
             self.efectos.append(SalpicaduraAnimada(r, c))
             self.color_msg = C_AGUA
         elif fb['resultado'] == 'impacto':
             self.efectos.append(ExplosionAnimada(r, c, self.frames_explosion))
             self.color_msg = C_IMPACTO
-        else:  # hundido: explosion en cada seccion, en cascada
-            barco = next(b for b in self.env.barcos if b.nombre == fb['barco'])
+        else:  # hundido: explosion en cascada sobre cada seccion del barco
+            barco = self.env.barcos[self.env.tablero_oculto[r][c] - 1]
             for k, (rr, cc) in enumerate(barco.posiciones):
                 self.efectos.append(ExplosionAnimada(rr, cc, self.frames_explosion, retraso=k * 110))
             self.color_msg = C_HUNDIDO
 
-        if self.env.done:
+        if self.env.ganado:
             t = self.env.turnos
-            minimo = sum(b.longitud for b in self.env.barcos)
-            rango = calificacion(t, minimo)
-            if self.mejor is None or t < self.mejor:
-                self.mejor = t
+            rango = calificacion(t, self.config.casillas_barco)
+            mejor = self.mejores.get(self.nivel)
+            if mejor is None or t < mejor:
+                self.mejores[self.nivel] = t
                 extra = "¡Nuevo récord!"
             else:
-                extra = f"Récord: {self.mejor}"
+                extra = f"Récord: {mejor}"
             self.resumen = f"{t} disparos  ·  Rango: {rango}  ·  {extra}"
             self.mensaje = "¡VICTORIA! Pulsa R para jugar de nuevo."
             self.color_msg = C_VICTORIA
+        elif self.env.agotado:
+            self.revelado = True      # se muestra donde estaba la flota
+            hundidos = len(self.env.barcos) - self.env.para_sentidos()['n_barcos_vivos']
+            self.resumen = f"Hundiste {hundidos} de {len(self.env.barcos)} barcos"
+            self.mensaje = "¡Sin disparos! Pulsa R para intentarlo de nuevo."
+            self.color_msg = C_HUNDIDO
 
     # -- eventos -------------------------------------------------------------
     def celda_bajo(self, pos):
         mx, my = pos
+        if mx < OX or my < OY:
+            return None
         c, r = (mx - OX) // TILE, (my - OY) // TILE
-        if 0 <= r < FILAS and 0 <= c < COLUMNAS and mx >= OX and my >= OY:
+        if 0 <= r < FILAS and 0 <= c < COLUMNAS:
             return int(r), int(c)
         return None
 
@@ -315,6 +351,10 @@ class JuegoVisual:
         if ev.type == pygame.QUIT:
             return False
         if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+            for rect, clave in self.botones:
+                if rect.collidepoint(ev.pos):
+                    self.cambiar_nivel(clave)
+                    return True
             celda = self.celda_bajo(ev.pos)
             if celda:
                 self.disparar(*celda)
@@ -325,6 +365,9 @@ class JuegoVisual:
                 self.nueva_partida()
             if ev.key == pygame.K_v:
                 self.rendirse()
+            for i, clave in enumerate(ORDEN_NIVELES):
+                if ev.key in (pygame.K_1 + i, pygame.K_KP1 + i):
+                    self.cambiar_nivel(clave)
         return True
 
     # -- dibujo --------------------------------------------------------------
@@ -334,21 +377,52 @@ class JuegoVisual:
         self.pantalla.blit(surf, rect)
         return rect
 
+    @staticmethod
+    def _ajustar(txt, fuente, ancho):
+        """Divide un texto en lineas que quepan en 'ancho' pixeles."""
+        lineas, actual = [], ""
+        for palabra in txt.split():
+            prueba = (actual + " " + palabra).strip()
+            if fuente.size(prueba)[0] <= ancho:
+                actual = prueba
+            else:
+                lineas.append(actual)
+                actual = palabra
+        if actual:
+            lineas.append(actual)
+        return lineas
+
+    def _marca_sonar(self, r, c):
+        """Marca neutra de 'sonar detecto algo' (con ruido no se sabe si es real)."""
+        p = self.pantalla
+        cx, cy = OX + c * TILE + TILE // 2, OY + r * TILE + TILE // 2
+        k = TILE // 4
+        pygame.draw.circle(p, (60, 25, 10), (cx, cy), TILE // 3 + 2)
+        pygame.draw.circle(p, C_IMPACTO, (cx, cy), TILE // 3, 3)
+        pygame.draw.line(p, C_IMPACTO, (cx - k, cy - k), (cx + k, cy + k), 3)
+        pygame.draw.line(p, C_IMPACTO, (cx - k, cy + k), (cx + k, cy - k), 3)
+
     def dibujar_tablero(self, ahora):
         p = self.pantalla
+        tab = self.env.tablero_agente
         p.blit(self.fondo, (OX, OY))
         p.blit(self.grid, (OX, OY))
 
-        # marcas permanentes de agua (disparos fallidos)
         for r in range(FILAS):
             for c in range(COLUMNAS):
-                if self.env.tablero_agente[r][c] == AGUA:
+                if tab[r][c] == AGUA:
                     cx, cy = OX + c * TILE + TILE // 2, OY + r * TILE + TILE // 2
                     pygame.draw.circle(p, (225, 240, 250), (cx, cy), 5)
-                    pygame.draw.circle(p, (225, 240, 250), (cx, cy), 14, 2)
+                    pygame.draw.circle(p, (225, 240, 250), (cx, cy), TILE // 4 + 3, 2)
 
         for v in self.vistas:
-            v.dibujar(p, self.env.tablero_agente, self.revelado, ahora)
+            v.dibujar(p, tab, self.revelado, ahora, self.ruido)
+
+        if self.ruido:
+            for r in range(FILAS):
+                for c in range(COLUMNAS):
+                    if tab[r][c] == TOCADO:
+                        self._marca_sonar(r, c)
 
         for e in self.efectos:
             e.dibujar(p, ahora)
@@ -356,12 +430,12 @@ class JuegoVisual:
         # casilla bajo el cursor
         if not self.partida_terminada():
             celda = self.celda_bajo(pygame.mouse.get_pos())
-            if celda and self.env.tablero_agente[celda[0]][celda[1]] == DESCONOCIDO:
+            if celda and tab[celda[0]][celda[1]] == DESCONOCIDO:
                 s = pygame.Surface((TILE, TILE), pygame.SRCALPHA)
                 s.fill((255, 255, 255, 50))
-                p.blit(s, (OX + celda[1] * TILE, OY + celda[0] * TILE))
-                pygame.draw.rect(p, (255, 255, 255),
-                                 (OX + celda[1] * TILE, OY + celda[0] * TILE, TILE, TILE), 2)
+                x, y = OX + celda[1] * TILE, OY + celda[0] * TILE
+                p.blit(s, (x, y))
+                pygame.draw.rect(p, (255, 255, 255), (x, y, TILE, TILE), 2)
 
         # etiquetas de coordenadas
         for i in range(COLUMNAS):
@@ -371,59 +445,94 @@ class JuegoVisual:
             self.texto(self.fuente, str(i + 1), C_TEXTO_SUAVE,
                        (OX // 2, OY + i * TILE + TILE // 2), centro=True)
 
-        # pantalla de victoria (cuando terminan las explosiones)
+        # pantalla final (cuando terminan las explosiones)
         if self.env.done and not any(isinstance(e, ExplosionAnimada) for e in self.efectos):
-            p.blit(self.velo, (OX, OY))
-            cx = OX + TABLERO_W // 2
-            self.texto(self.fuente_grande, "¡VICTORIA!", C_VICTORIA, (cx, OY + TABLERO_H // 2 - 30), centro=True)
-            self.texto(self.fuente, self.resumen, C_TEXTO, (cx, OY + TABLERO_H // 2 + 28), centro=True)
+            cx, cy = OX + TABLERO_W // 2, OY + TABLERO_H // 2
+            if self.env.ganado:
+                p.blit(self.velo, (OX, OY))
+                titulo, color = "¡VICTORIA!", C_VICTORIA
+            else:
+                p.blit(self.banda, (OX, cy - 75))   # banda: deja ver la flota revelada
+                titulo, color = "DERROTA", C_HUNDIDO
+            self.texto(self.fuente_grande, titulo, color, (cx, cy - 30), centro=True)
+            self.texto(self.fuente, self.resumen, C_TEXTO, (cx, cy + 28), centro=True)
             self.texto(self.fuente_peq, "Pulsa R para jugar de nuevo", C_TEXTO_SUAVE,
-                       (cx, OY + TABLERO_H // 2 + 62), centro=True)
+                       (cx, cy + 56), centro=True)
 
     def dibujar_panel(self):
         p = self.pantalla
-        x0 = MARGEN + TABLERO_W + 16
-        pygame.draw.rect(p, C_PANEL, (x0, 0, PANEL_W, ALTO))
-        pygame.draw.line(p, C_PANEL_BORDE, (x0, 0), (x0, ALTO), 2)
-        x = x0 + 20
+        env, cfg = self.env, self.config
+        pygame.draw.rect(p, C_PANEL, (PANEL_X, 0, PANEL_W, ALTO))
+        pygame.draw.line(p, C_PANEL_BORDE, (PANEL_X, 0), (PANEL_X, ALTO), 2)
+        x = PANEL_X + 20
 
         self.texto(self.fuente_titulo, "BATALLA NAVAL", C_TEXTO, (x, 18))
-        self.texto(self.fuente, f"Disparos: {self.env.turnos}", C_TEXTO, (x, 66))
-        rec = self.mejor if self.mejor is not None else "-"
-        self.texto(self.fuente_peq, f"Récord de la sesión: {rec}", C_TEXTO_SUAVE, (x, 94))
 
-        self.texto(self.fuente, "Flota enemiga", C_TEXTO, (x, 140))
+        # selector de nivel
+        for i, (rect, clave) in enumerate(self.botones):
+            activo = clave == self.nivel
+            pygame.draw.rect(p, (40, 110, 150) if activo else C_PANEL, rect, border_radius=5)
+            pygame.draw.rect(p, C_TEXTO if activo else C_PANEL_BORDE, rect, 2, border_radius=5)
+            self.texto(self.fuente_peq, f"{i + 1}  {NIVELES[clave].nombre}",
+                       C_TEXTO if activo else C_TEXTO_SUAVE, rect.center, centro=True)
+
+        lim = cfg.max_disparos
+        disparos = f"{env.turnos}" if lim is None else f"{env.turnos} / {lim}"
+        color = C_HUNDIDO if lim is not None and lim - env.turnos <= 5 else C_TEXTO
+        self.texto(self.fuente, f"Disparos: {disparos}", color, (x, 126))
+        rec = self.mejores.get(self.nivel, "-")
+        self.texto(self.fuente_peq, f"Récord en este nivel: {rec}", C_TEXTO_SUAVE, (x, 152))
+
         y = 176
-        for b in self.env.barcos:
-            hundido = b.esta_hundido()
-            color = C_TEXTO_SUAVE if hundido else C_TEXTO
-            r = self.texto(self.fuente_peq, f"{b.nombre} ({b.longitud})", color, (x, y))
-            if hundido:
-                pygame.draw.line(p, C_HUNDIDO, (r.left, r.centery), (r.right, r.centery), 2)
-            for i in range(b.longitud):
-                caja = pygame.Rect(x + i * 26, y + 22, 22, 14)
-                if i < b.impactos:
-                    pygame.draw.rect(p, C_HUNDIDO if hundido else C_IMPACTO, caja, border_radius=3)
+        for linea in cfg.descripcion():
+            for k, sub in enumerate(self._ajustar("· " + linea, self.fuente_peq, PANEL_W - 40)):
+                self.texto(self.fuente_peq, ("   " if k else "") + sub, C_TEXTO_SUAVE, (x, y))
+                y += 17
+
+        y = max(y + 12, 250)
+        self.texto(self.fuente, "Flota enemiga", C_TEXTO, (x, y))
+        y += 32
+        if cfg.mostrar_flota_restante:
+            for b in env.barcos:
+                hundido = b.esta_hundido()
+                r = self.texto(self.fuente_peq, f"{b.nombre} ({b.longitud})",
+                               C_TEXTO_SUAVE if hundido else C_TEXTO, (x, y))
+                if hundido:
+                    pygame.draw.line(p, C_HUNDIDO, (r.left, r.centery), (r.right, r.centery), 2)
+                for i in range(b.longitud):
+                    caja = pygame.Rect(x + i * 24, y + 20, 20, 12)
+                    lleno = hundido or (i < b.impactos and not self.ruido)
+                    if lleno:
+                        pygame.draw.rect(p, C_HUNDIDO if hundido else C_IMPACTO, caja, border_radius=3)
+                    else:
+                        pygame.draw.rect(p, C_PANEL_BORDE, caja, 2, border_radius=3)
+                y += 44
+        else:
+            total = len(env.barcos)
+            vivos = env.para_sentidos()['n_barcos_vivos']
+            self.texto(self.fuente_peq, f"Barcos restantes: {vivos} de {total}", C_TEXTO, (x, y))
+            self.texto(self.fuente_peq, "(no se sabe cuáles)", C_TEXTO_SUAVE, (x, y + 20))
+            for i in range(total):
+                caja = pygame.Rect(x + i * 36, y + 46, 30, 16)
+                if i < total - vivos:
+                    pygame.draw.rect(p, C_HUNDIDO, caja, border_radius=3)
                 else:
                     pygame.draw.rect(p, C_PANEL_BORDE, caja, 2, border_radius=3)
-            y += 56
 
-        ayuda = ["Clic: disparar", "R: nueva partida", "V: rendirse", "ESC: salir"]
-        yy = ALTO - 20 - 22 * len(ayuda)
+        ayuda = ["Clic: disparar", "1-4: cambiar de nivel", "R: nueva partida",
+                 "V: rendirse", "ESC: salir"]
+        yy = ALTO - 16 - 20 * len(ayuda)
         for linea in ayuda:
             self.texto(self.fuente_peq, linea, C_TEXTO_SUAVE, (x, yy))
-            yy += 22
+            yy += 20
 
     def dibujar_barra(self):
-        p = self.pantalla
-        w = MARGEN + TABLERO_W + 16
-        pygame.draw.rect(p, C_PANEL, (0, OY + TABLERO_H, w, BARRA_H))
-        # si el mensaje no cabe, usa una letra mas pequena
+        pygame.draw.rect(self.pantalla, C_PANEL, (0, OY + AREA, PANEL_X, BARRA_H))
         fuente = self.fuente_msg
-        if fuente.size(self.mensaje)[0] > TABLERO_W:
+        if fuente.size(self.mensaje)[0] > AREA:
             fuente = self.fuente
         self.texto(fuente, self.mensaje, self.color_msg,
-                   (OX + TABLERO_W // 2, OY + TABLERO_H + BARRA_H // 2), centro=True)
+                   (OX + AREA // 2, OY + AREA + BARRA_H // 2), centro=True)
 
     def dibujar(self):
         ahora = pygame.time.get_ticks()
@@ -454,9 +563,10 @@ class JuegoVisual:
 
 def main():
     parser = argparse.ArgumentParser(description="Batalla Naval visual (pygame)")
-    parser.add_argument('--semilla', type=int, default=None, help="semilla para la flota")
+    parser.add_argument('--nivel', default='medio', choices=ORDEN_NIVELES)
+    parser.add_argument('--semilla', type=int, default=None, help="semilla de la primera partida")
     args = parser.parse_args()
-    JuegoVisual(seed=args.semilla).jugar()
+    JuegoVisual(nivel=args.nivel, seed=args.semilla).jugar()
 
 
 if __name__ == "__main__":
