@@ -144,3 +144,6 @@ def _registrar_dqn():
 
 
 _registrar_dqn()
+
+from mcts_agent import AgenteMCTS
+AGENTES['mcts'] = AgenteMCTS
