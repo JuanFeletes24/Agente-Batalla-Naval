@@ -12,23 +12,6 @@ def coord_a_texto(r: int, c: int) -> str:
     return f"{string.ascii_uppercase[c]}{r + 1}"
 
 
-def texto_a_coord(texto: str, filas: int = 10, columnas: int = 10):
-    """
-    'B5' (o 'b5', ' B 5 ') -> (4, 1).
-    Devuelve None si el texto no es una coordenada valida para el tablero.
-    """
-    texto = texto.strip().upper().replace(" ", "")
-    if len(texto) < 2 or texto[0] not in string.ascii_uppercase:
-        return None
-    c = string.ascii_uppercase.index(texto[0])
-    if not texto[1:].isdigit():
-        return None
-    r = int(texto[1:]) - 1
-    if 0 <= r < filas and 0 <= c < columnas:
-        return (r, c)
-    return None
-
-
 def mensaje_feedback(feedback: dict, ruido: bool = False) -> str:
     """
     Convierte el feedback del entorno en una frase para el jugador.
