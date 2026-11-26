@@ -26,6 +26,16 @@ class AgenteBayesiano(Agente):
             else:
                 return todos[:k]
 
+    def _nombres_restantes(self, percepts: dict, longitudes: list) -> list:
+        """Etiqueta de cada barco vivo (su nombre, o 'Barco de L' si la flota esta oculta)."""
+        if percepts['barcos_vivos'] is not None:
+            return [f"{nombre} ({self.flota_config[nombre]})" for nombre in percepts['barcos_vivos']]
+        nombres = []
+        for i, L in enumerate(longitudes):
+            repetidos = longitudes.count(L) > 1
+            nombres.append(f"Barco de {L}" + (f" (#{longitudes[:i + 1].count(L)})" if repetidos else ""))
+        return nombres
+
     def _prior_posicion(self, pos: list, filas: int, cols: int) -> float:
         if self.colocacion == 'bordes':
             for (r,c) in pos:
@@ -111,6 +121,8 @@ class AgenteBayesiano(Agente):
         k = len(longitudes)
         p_ningun_barco = np.ones((filas, cols), dtype=float)
         total_configs = 0
+        marginales = []                     # un mapa por barco vivo: P(ese barco ocupa la casilla)
+        nombres = self._nombres_restantes(percepts, longitudes)
 
         for L in longitudes:
             otras = sum(longitudes) - L
@@ -118,18 +130,22 @@ class AgenteBayesiano(Agente):
             pk, n_cfg = self._marginal_barco(L, tablero_obs, rho)
             total_configs += n_cfg
             p_ningun_barco *= (1.0 - pk)
+            marginales.append({'etiqueta': nombres[len(marginales)], 'longitud': L,
+                               'mapa': np.where(tablero_obs == DESCONOCIDO, pk, np.nan),
+                               'configs': n_cfg})
 
         mapa_post = 1.0 - p_ningun_barco
         mapa = np.where(tablero_obs == DESCONOCIDO, mapa_post, np.nan)
 
-        return (mapa, total_configs, len(longitudes))
+        return (mapa, total_configs, len(longitudes), marginales)
 
     def make_decision(self, percepts: dict) -> tuple:
-        mapa, n_configs, n_barcos = self._calcular_mapa_posterior(percepts)
+        mapa, n_configs, n_barcos, marginales = self._calcular_mapa_posterior(percepts)
         max_p = float(np.nanmax(mapa))
         mejores = [tuple(int(v) for v in rc) for rc in np.argwhere(np.isclose(mapa, max_p, atol=1e-12))]
         elegida = mejores[int(self.rng.integers(len(mejores)))]
-        self._ult = {'mapa': mapa, 'configs': n_configs, 'barcos': n_barcos, 'max_p': max_p}
+        self._ult = {'mapa': mapa, 'configs': n_configs, 'barcos': n_barcos, 'max_p': max_p,
+                     'marginales': marginales}
         return elegida
 
     def estado_interno(self) -> dict:
@@ -142,6 +158,7 @@ class AgenteBayesiano(Agente):
             'mapa': u['mapa'],
             'tipo_mapa': 'probabilidad a posteriori P(Barco | e)',
             'info': {'P maxima': round(u['max_p'], 4), 'hipotesis evaluadas': u['configs'], 'barcos en red': u['barcos']},
+            'marginales': u['marginales'],           # mapas por barco, para elegirlos en la interfaz
             'evaluaciones': u['configs'],
             'memoria': u['configs'] + int(u['mapa'].size)
         }

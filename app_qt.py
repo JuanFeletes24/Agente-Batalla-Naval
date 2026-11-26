@@ -447,6 +447,10 @@ class PestanaAgente(QWidget):
         self.chk_flota = QCheckBox("Mostrar la flota oculta")
         self.chk_orden = QCheckBox("Numerar el orden de los disparos")
         self.chk_orden.setChecked(True)
+        self.lbl_marg = QLabel("Mapa de calor del agente bayesiano")
+        self.cmb_marg = QComboBox()                 # combinado o la marginal de un barco
+        self.lbl_marg.hide()
+        self.cmb_marg.hide()
         self.chk_reglas = QCheckBox("Colorear casillas candidatas por regla (Caza-Remate)")
         self.chk_reglas.setChecked(True)
         self.reglas = QLabel()              # Caza-Remate: reglas y casillas candidatas
@@ -485,6 +489,8 @@ class PestanaAgente(QWidget):
         derecha.addWidget(self.chk_flota)
         derecha.addWidget(self.chk_orden)
         derecha.addWidget(self.chk_reglas)
+        derecha.addWidget(self.lbl_marg)
+        derecha.addWidget(self.cmb_marg)
         derecha.addWidget(self.panel, 1)
         derecha.addWidget(QLabel("Jugadas"))
         derecha.addWidget(self.historial)
@@ -509,6 +515,7 @@ class PestanaAgente(QWidget):
         self.btn_play.toggled.connect(self.alternar_reproduccion)
         btn_fin.clicked.connect(self.terminar)
         self.slider.valueChanged.connect(self.cambiar_velocidad)
+        self.cmb_marg.currentIndexChanged.connect(self.marcar_sucio)
         for chk in (self.chk_mapa, self.chk_flota, self.chk_orden, self.chk_reglas):
             chk.toggled.connect(self.marcar_sucio)
 
@@ -627,6 +634,7 @@ class PestanaAgente(QWidget):
         self.panel.setText(s.resumen_markdown())
         ult = s.ultima_vista()
         self.reglas.setText(self.texto_reglas(ult['interno'] if ult else None))
+        self.actualizar_marginales(ult['interno'] if ult else None)
         self.cambio.emit()
         self.lbl_pos.setText(f"Jugada {s.posicion} / {len(s.historial)}")
 
@@ -637,6 +645,21 @@ class PestanaAgente(QWidget):
             return None, None, 0, 0
         ult = s.ultima_vista()
         return self.cmb_agente.currentData(), (ult['interno'] if ult else None), s.posicion, len(s.historial)
+
+    def actualizar_marginales(self, interno):
+        """Llena el selector con 'Combinado' y un barco por cada marginal (solo agente bayesiano)."""
+        marg = (interno or {}).get('marginales') or []
+        actual = self.cmb_marg.currentData()
+        self.cmb_marg.blockSignals(True)
+        self.cmb_marg.clear()
+        self.cmb_marg.addItem("Combinado: P(barco | evidencia)", None)
+        for m in marg:
+            self.cmb_marg.addItem(f"Solo el barco: {m['etiqueta']}", m['etiqueta'])
+        i = self.cmb_marg.findData(actual) if actual is not None else 0
+        self.cmb_marg.setCurrentIndex(max(i, 0))              # si ese barco ya se hundio, vuelve al combinado
+        self.cmb_marg.blockSignals(False)
+        self.lbl_marg.setVisible(bool(marg))
+        self.cmb_marg.setVisible(bool(marg))
 
     def texto_reglas(self, interno) -> str:
         """Leyenda de Caza-Remate: reglas, casillas candidatas por regla y regla disparada."""
@@ -669,6 +692,11 @@ class PestanaAgente(QWidget):
             ult = s.ultima_vista()
             interno = ult['interno'] if ult else {}
             mapa = interno.get('mapa') if (ult and self.chk_mapa.isChecked()) else None
+            barco = self.cmb_marg.currentData()
+            if mapa is not None and barco is not None:        # marginal de un barco concreto
+                for m in interno.get('marginales') or []:
+                    if m['etiqueta'] == barco:
+                        mapa = m['mapa']
             cats = interno.get('categorias') if (ult and self.chk_reglas.isChecked()) else None
             if cats:
                 cats = {rc: COLOR_REGLA[k] for rc, k in cats.items()}
