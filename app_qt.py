@@ -1287,9 +1287,10 @@ class TrabajoComparacion(QThread):
 MEJOR_COLUMNA = {'Victorias (%)': True, 'Disparos (media)': False, 'Eficiencia': True,
                  'Óptimas (%)': True, 'Brecha al óptimo': False, 'Recompensa acum.': True,
                  'Tiempo/jugada (ms)': False, 'Tiempo/partida (s)': False,
-                 'Evaluaciones': False, 'Memoria máx.': False}
+                 'Evaluaciones': False, 'Memoria máx.': False, 'Tiempo CPU (s)': False, 
+                 'Nodos generados': False, 'Nodos expandidos': False}
 DECIMALES_COLUMNA = {'Partidas': 0, 'Disparos (mín.)': 0, 'Disparos (máx.)': 0, 'Evaluaciones': 0,
-                     'Memoria máx.': 0, 'Tiempo/partida (s)': 3}
+                     'Memoria máx.': 0, 'Tiempo/partida (s)': 3, 'Tiempo CPU (s)': 3, 'Nodos generados': 0, 'Nodos expandidos': 0}
 
 
 def llenar_tabla(tabla: QTableWidget, resumen: pd.DataFrame):

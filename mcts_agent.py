@@ -295,14 +295,31 @@ class AgenteMCTS(Agente):
         for (r,c), n_a in raiz.visitas_accion.items():
             mapa[r,c] = raiz.valor_accion[(r,c)] / n_a
 
+        expandidos = self._contar_expandidos(raiz)
+
+
         return {
             'mapa': mapa,
             'tipo_mapa': 'valor Q estimado (MCTS)',
             'info': {'simulaciones': raiz.visitas, 'candidatas exploradas': len(raiz.visitas_accion),
                      'nodos en el arbol': u['nodos'],
-                     'acción elegida': coord_a_texto(*u['elegida']) if u.get('elegida') else '-'},
+                     'acción elegida': coord_a_texto(*u['elegida']) if u.get('elegida') else '-',
+                     'nodos expandidos': expandidos,
+                     'nodos en frontera': u['nodos'] - expandidos
+                     },
             'arbol': self._resumen_arbol(raiz, u.get('elegida')),
             'acciones_raiz': self._acciones_raiz(raiz),
             'evaluaciones': u['evals'],
-            'memoria': u['nodos']
+            'memoria': u['nodos'],
+            'nodos_generados': u['nodos'],
+            'nodos_expandidos': expandidos
         }
+
+    @staticmethod
+    def _contar_expandidos(nodo: NodoMCTS) -> int:
+        if not nodo.visitas_accion:
+            return 0
+        else:
+            return 1 + sum(AgenteMCTS._contar_expandidos(h) for h in nodo.hijos.values())
+
+    

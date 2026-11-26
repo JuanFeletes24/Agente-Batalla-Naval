@@ -152,4 +152,8 @@ class AgenteDQN(Agente):
                 'info': {'Q maximo': round(float(self._q[legal].max()), 3),
                          'Q medio': round(float(self._q[legal].mean()), 3),
                          'parametros de la red': params},
-                'evaluaciones': int(legal.sum()), 'memoria': params}
+                'evaluaciones': int(legal.sum()), 
+                'memoria': params,
+                'nodos_generados': int(legal.sum()),
+                'nodos_expandidos': 1
+                }

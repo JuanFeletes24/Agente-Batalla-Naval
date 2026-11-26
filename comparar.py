@@ -25,7 +25,8 @@ COLUMNAS_RESUMEN = [
     'Partidas', 'Victorias (%)', 'Disparos (media)', 'Disparos (desv.)', 'Disparos (mín.)',
     'Disparos (máx.)', 'Eficiencia', 'Óptimas (%)', 'Brecha al óptimo', 'Recompensa acum.',
     'Tiempo/jugada (ms)', 'Tiempo/partida (s)', 'Evaluaciones', 'Memoria máx.',
-]
+    'Tiempo CPU (s)','Nodos generados', 'Nodos expandidos',
+    ]
 
 
 def nombre_agente(clave: str) -> str:
@@ -85,6 +86,9 @@ def resumen_agentes(df: pd.DataFrame) -> pd.DataFrame:
         'Tiempo/partida (s)': g['tiempo_total_s'].mean(),
         'Evaluaciones': g['evaluaciones'].mean(),
         'Memoria máx.': g['memoria_max'].max(),
+        'Tiempo CPU (s)': g['tiempo_cpu_s'].mean(),
+        'Nodos generados': g['nodos_generados'].mean(),
+        'Nodos expandidos': g['nodos_expandidos'].mean(),
     })
     return tabla[COLUMNAS_RESUMEN]
 
@@ -125,9 +129,16 @@ def _barras(ax, nombres, valores, errores=None, titulo='', ylabel=None, log=Fals
     positivos = valores[valores > 0]
     if log and len(positivos) == len(valores) and valores.max() / valores.min() > 50:
         ax.set_yscale('log')
+        positivos = valores[valores > 0]
+    if log and len(positivos) == len(valores) and valores.max() / valores.min() > 50:
+        ax.set_yscale('log')
+    elif log and len(positivos) > 0 and valores.max() > 0.05:
+        ax.set_yscale('symlog', linthresh=1e-3)
+
     for xi, v in zip(x, valores):
         ax.annotate(fmt.format(v), (xi, v), ha='center', va='bottom', color=TEXTO, fontsize=7,
                     xytext=(0, 2), textcoords='offset points')
+
     ax.set_xticks(x)
     ax.set_xticklabels(nombres, rotation=20, ha='right')
 
@@ -167,14 +178,35 @@ def dibujar_comparacion(fig, df: pd.DataFrame, minimo: int = None, fondo_ejes: s
         ax.axhline(minimo, color='#6ee68c', linestyle='--', linewidth=1)
         ax.annotate('óptimo teórico', (len(nombres) + 0.45, minimo), color='#6ee68c', fontsize=7,
                     ha='right', va='bottom')
+    ax2 = ejes[1][1]
+    _estilo(ax2, 'Nodos generados vs. expandidos', 'nodos por partida', fondo)
+    x = np.arange(len(nombres))
+    v_gen = np.nan_to_num(np.asarray(media('nodos_generados'), dtype=float))
+    v_exp = np.nan_to_num(np.asarray(media('nodos_expandidos'), dtype=float))
+    ax2.bar(x - 0.18, v_gen, 0.35, label='Generados', color='#4FC3F7')
+    ax2.bar(x + 0.18, v_exp, 0.35, label='Expandidos', color='#FFB74D')
+    if np.max(v_gen) > 50:
+        ax2.set_yscale('symlog', linthresh=1)
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(nombres, rotation=20, ha='right')
+    ax2.legend(fontsize=7, facecolor=fondo, labelcolor=TEXTO)
 
-    _barras(ejes[0][2], nombres, media('eficiencia'), titulo='Eficiencia (ganadas)',
-            ylabel='casillas de barco / disparos', fondo=fondo)
-    ejes[0][2].set_ylim(0, 1.15)
-    _barras(ejes[1][0], nombres, media('tiempo_total_s'), errores=desv('tiempo_total_s'),
-            titulo='Tiempo por partida', ylabel='segundos', log=True, fmt="{:.3f}", fondo=fondo)
-    _barras(ejes[1][1], nombres, media('evaluaciones'), titulo='Evaluaciones por partida',
-            ylabel='nodos / muestras evaluadas', log=True, fmt="{:.0f}", fondo=fondo)
+    ax_rec = ejes[0][2]
+    _estilo(ax_rec, 'Recompensa media acumulada', 'recompensa', fondo)
+    for i, n in enumerate(nombres):
+        serie = df.loc[df['nombre'] == n, 'recompensa'].to_numpy(dtype=float)
+        iters = np.arange(1, len(serie) + 1)
+        media_acum = np.cumsum(serie) / iters
+        marcador = 'o' if len(serie) <= 15 else None
+        ax_rec.plot(iters, media_acum, color=PALETA[i % len(PALETA)], linewidth=1.6,
+                    marker=marcador, markersize=4, label=n)
+    if minimo:
+        ax_rec.axhline(-minimo, color='#6ee68c', linestyle='--', linewidth=1, label='óptimo')
+    ax_rec.set_xlabel('partida (iteración)', color=TEXTO, fontsize=8)
+    ax_rec.legend(fontsize=6.5, facecolor=fondo, labelcolor=TEXTO)
+
+    _barras(ejes[1][0], nombres, media('tiempo_cpu_s'), errores=desv('tiempo_cpu_s'),
+            titulo='Tiempo CPU por partida', ylabel='segundos CPU', log=True, fmt="{:.3f}", fondo=fondo)
     _barras(ejes[1][2], nombres, [g['memoria_max'].max()[n] for n in nombres],
             titulo='Memoria aproximada (máx.)', ylabel='elementos', log=True, fmt="{:.0f}", fondo=fondo)
     fig.tight_layout()

@@ -72,7 +72,7 @@ class RandomAgent(Agente):
     def estado_interno(self) -> dict:
         mapa = np.where(self._tablero == DESCONOCIDO, 1.0 / self._n, np.nan)
         return {'mapa': mapa, 'tipo_mapa': 'probabilidad uniforme',
-                'info': {'casillas libres': self._n}, 'evaluaciones': 0, 'memoria': 0}
+                'info': {'casillas libres': self._n}, 'evaluaciones': 0, 'memoria': 0, 'nodos_generados': 0, 'nodos_expandidos': 0}
 
 
 REGLAS_CAZA = {
@@ -99,13 +99,13 @@ class AgenteCazaRemate(Agente):
         if objetivo is not None:
             reglas = {rc: ('colineal' if rc in colineales else 'ortogonal') for rc in puntaje}
             self._ult = {'modo': 'remate', 'celdas': puntaje, 'tablero': t,
-                         'reglas': reglas, 'regla': reglas[objetivo]}
+                         'reglas': reglas, 'regla': reglas[objetivo], 'expandidos': int(np.sum(t == TOCADO))}
             return objetivo
         libres = self.casillas_libres(t)
         paridad = [rc for rc in libres if (rc[0] + rc[1]) % 2 == 0]
         pool = paridad if paridad else libres
         self._ult = {'modo': 'caza', 'celdas': {rc: 1.0 for rc in pool}, 'tablero': t,
-                     'reglas': {rc: 'caza' for rc in pool}, 'regla': 'caza'}
+                     'reglas': {rc: 'caza' for rc in pool}, 'regla': 'caza', 'expandidos': 1}
         return pool[int(self.rng.integers(len(pool)))]
 
     def estado_interno(self) -> dict:
@@ -121,7 +121,10 @@ class AgenteCazaRemate(Agente):
         return {'mapa': mapa, 'tipo_mapa': tipo, 'info': info,
                 'categorias': dict(u['reglas']),            # {(fila, col): clave de regla}
                 'leyenda': dict(REGLAS_CAZA), 'categoria_activa': u['regla'],
-                'evaluaciones': len(u['celdas']), 'memoria': len(u['celdas'])}
+                'evaluaciones': len(u['celdas']), 'memoria': len(u['celdas']),
+                'nodos_generados': len(u['celdas']),
+                'nodos_expandidos': min(u['expandidos'], len(u['celdas']))
+                }
 
     def _remate(self, t):
         filas, cols = t.shape

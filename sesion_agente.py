@@ -77,7 +77,9 @@ class SesionAgente:
             return None
 
         t0 = time.perf_counter()
+        c0 = time.process_time()
         accion = self.agente.make_decision(self.obs)
+        cpu_ms = 1000 * (time.process_time() - c0)
         ms = 1000 * (time.perf_counter() - t0)          # el estado interno NO se cuenta en el tiempo
         interno = self._copiar_interno(self.agente.estado_interno())
         accion = tuple(int(v) for v in accion)
@@ -85,7 +87,8 @@ class SesionAgente:
         fb = dict(self.env.ultimo_feedback)
         self.historial.append({'turno': self.env.turnos, 'coord': accion, 'resultado': fb['resultado'],
                                'real': info['resultado_real'], 'ms': ms, 'feedback': fb,
-                               'interno': interno})
+                               'interno': interno,
+                               'cpu_ms': cpu_ms})
         self.posicion = len(self.historial)
         return self.historial[-1]
 
@@ -153,7 +156,7 @@ class SesionAgente:
         ms = [x['ms'] for x in h]
         lineas = [f"### {self.nombre_agente} · nivel {cfg.nombre}",
                   f"**Semilla:** {self.seed}", "",
-                  f"**Disparos:** {len(h)}" + (f" / {lim}" if lim else ""), "",
+                  f"**Disparos:** {len(h)}" + (f" / {lim}" if lim else "") + f" · **Recompensa:** {-len(h)}", "",
                   f"Agua: {n('agua')} · Impactos: {n('impacto')} · Hundidos: {n('hundido')}", ""]
         if ms:
             lineas += [f"**Tiempo por jugada:** última {ms[-1]:.2f} ms · media {sum(ms)/len(ms):.2f} ms", ""]
@@ -168,6 +171,9 @@ class SesionAgente:
         if ult and ult['interno']:
             i = ult['interno']
             lineas += ["", "#### Estado interno del agente (en esta jugada)"]
+            gen = sum(x['interno'].get('nodos_generados', 0) for x in h if x['interno'])
+            exp = sum(x['interno'].get('nodos_expandidos', 0) for x in h if x['interno'])
+            lineas.append(f"- Nodos generados / expandidos (acum.): {gen} / {exp}")
             if i.get('tipo_mapa'):
                 lineas.append(f"- Mapa: {i['tipo_mapa']}")
             for k, v in (i.get('info') or {}).items():

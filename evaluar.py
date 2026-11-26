@@ -37,14 +37,21 @@ def jugar_episodio(agente, config, seed, disposicion=None):
     obs = env.para_sentidos()
     agente.restart(seed=seed)
     tiempo = 0.0
+    tiempo_cpu = 0.0
+    nodos_generados = 0
+    nodos_expandidos = 0
     evaluaciones = 0        
     memoria_max = 0           
     while not env.done:
+        c0 = time.process_time()
         t0 = time.perf_counter()
         accion = agente.make_decision(obs)
         tiempo += time.perf_counter() - t0
+        tiempo_cpu += time.process_time() - c0
         interno = agente.estado_interno() or {}
         evaluaciones += interno.get('evaluaciones', 0)
+        nodos_generados += interno.get('nodos_generados', interno.get('evaluaciones', 0))
+        nodos_expandidos += interno.get('nodos_expandidos', 0)
         memoria_max = max(memoria_max, interno.get('memoria', 0))
         obs, _, _, _ = env.step(accion)
     minimo = config.casillas_barco          
@@ -59,6 +66,11 @@ def jugar_episodio(agente, config, seed, disposicion=None):
         'tiempo_total_s': tiempo,
         'evaluaciones': evaluaciones,
         'memoria_max': memoria_max,
+        'recompensa': env.recompensa_acumulada,
+        'cpu_ms_por_jugada': 1000 * tiempo_cpu / env.turnos,
+        'tiempo_cpu_s': tiempo_cpu,
+        'nodos_generados': nodos_generados,
+        'nodos_expandidos': nodos_expandidos,
     }
 
 def evaluar(agentes, niveles, episodios=100, seed_base=1000, calibrar=False):
@@ -86,6 +98,11 @@ def resumen(df):
         tiempo_partida_s=('tiempo_total_s', 'mean'),
         evaluaciones_media=('evaluaciones', 'mean'),
         memoria_max=('memoria_max', 'max'),
+        recompensa_media=('recompensa', 'mean'),
+        cpu_ms_jugada=('cpu_ms_por_jugada', 'mean'),
+        tiempo_cpu_s=('tiempo_cpu_s', 'mean'),
+        nodos_gen=('nodos_generados', 'mean'),
+        nodos_exp=('nodos_expandidos', 'mean')
     ).round(2)
     return out
 
