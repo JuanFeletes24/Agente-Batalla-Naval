@@ -83,7 +83,7 @@ Agente-Batalla-Naval/
    cd Agente-Batalla-Naval
    ```
 
-   > Si descargaste el `.zip`, descomprímelo y entra a la carpeta del proyecto.
+   > Si se descargo el `.zip`, descomprímelo y entra a la carpeta del proyecto.
 
 2. **Crear y activar un entorno virtual** (recomendado)
 
@@ -103,13 +103,7 @@ Agente-Batalla-Naval/
 
    Esto instala `numpy`, `matplotlib`, `pandas`, `pygame-ce`, `PySide6`, `torch` y `jupyter`.
 
-   > **Nota:** `torch` es una descarga grande. Si solo vas a usar los agentes que no son DQN puedes omitirlo; el agente DQN simplemente no aparecerá en la interfaz.
-
-4. **Verificar la instalación** (opcional)
-
-   ```bash
-   python test_instancias.py
-   ```
+   > **Nota:** `torch` Solo es necesario para ejecutar el agente DQN
 
 ---
 
@@ -133,18 +127,6 @@ La ventana tiene cinco pestañas:
 
 **Controles del editor:** clic = colocar, clic sobre un barco = moverlo, clic derecho = quitarlo, `R` o rueda del ratón = girar horizontal/vertical.
 
-### Evaluación por consola
-
-Todos los agentes juegan las mismas partidas (mismas semillas), lo que hace la comparación justa.
-
-```bash
-python evaluar.py                                      # todos los niveles y agentes
-python evaluar.py --episodios 200 --niveles medio dificil
-python evaluar.py --agentes caza mcts --seed 1000
-python evaluar.py --agentes caza --calibrar            # sin límite de disparos
-python evaluar.py --csv resultados.csv                 # guarda todas las partidas
-```
-
 ### Entrenamiento del agente DQN
 
 Los modelos para `facil`, `medio` y `dificil` ya están en `models/`. Para entrenar o reentrenar:
@@ -157,17 +139,7 @@ python entrenar_dqn.py --nivel dificil --dispositivo cuda --batch 256 --actualiz
 
 Se genera `models/dqn_<nivel>.pt` (pesos), `models/dqn_<nivel>_log.csv` (curva de aprendizaje) y `models/dqn_<nivel>.png` (gráfica). Ejecuta `python entrenar_dqn.py --help` para ver todos los parámetros.
 
-> El nivel **Experto** aún no tiene modelo DQN entrenado; en ese nivel (y en instancias personalizadas) el DQN se omite y los demás agentes funcionan con normalidad.
-
-### Notebook
-
-```bash
-jupyter notebook Notebook_Batalla_Naval.ipynb
-```
-
-Recorre la creación de una instancia del entorno, sus atributos y métodos principales (`step`, `reset`, `acciones_aplicables`, `para_sentidos`, `test_objetivo`), las instancias personalizadas y la aplicación de cada algoritmo.
-
----
+> El nivel **Experto** no tiene modelo DQN entrenado; en ese nivel (y en instancias personalizadas) el DQN se omite y los demás agentes funcionan con normalidad.
 
 ## Capturas de pantalla
 
@@ -274,19 +246,10 @@ Para agregar un agente nuevo: heredar de `agents.Agente`, implementar `make_deci
 
 ---
 
-## Pruebas
-
-```bash
-python test_instancias.py
-# o, si tienes pytest:
-pytest test_instancias.py
-```
-
----
 
 ## Autores y licencia
 
-Proyecto desarrollado por: **<nombres de los integrantes>**
+Proyecto desarrollado por: Sebastián Rojas – Juan Felipe Rojas – Juan Diego Jiménez
 
 Universidad del Rosario — Representación y solución automática de problemas.
 
