@@ -25,22 +25,39 @@ from dificultad import NIVELES, ORDEN_NIVELES
 
 
 def jugar_episodio(agente, config, seed):
+    """
+    Juega una partida completa y devuelve sus metricas.
+
+    El tiempo solo cuenta lo que tarda el agente en decidir (make_decision).
+    El estado interno se pide fuera del cronometro para no inflar el tiempo.
+    """
     env = BatallaNavalEnv(config=config, seed=seed)
     obs = env.para_sentidos()
     agente.restart(seed=seed)
     tiempo = 0.0
+    evaluaciones = 0        
+    memoria_max = 0           
     while not env.done:
         t0 = time.perf_counter()
         accion = agente.make_decision(obs)
         tiempo += time.perf_counter() - t0
+        interno = agente.estado_interno() or {}
+        evaluaciones += interno.get('evaluaciones', 0)
+        memoria_max = max(memoria_max, interno.get('memoria', 0))
         obs, _, _, _ = env.step(accion)
+    minimo = config.casillas_barco          
     return {
         'ganado': env.ganado,
         'disparos': env.turnos,
-        'eficiencia': config.casillas_barco / env.turnos if env.ganado else np.nan,
+        'costo': -env.recompensa_acumulada,
+        'eficiencia': minimo / env.turnos if env.ganado else np.nan,
+        'optimo': bool(env.ganado and env.turnos == minimo),
+        'brecha': env.turnos - minimo if env.ganado else np.nan,
         'ms_por_jugada': 1000 * tiempo / env.turnos,
+        'tiempo_total_s': tiempo,
+        'evaluaciones': evaluaciones,
+        'memoria_max': memoria_max,
     }
-
 
 def evaluar(agentes, niveles, episodios=100, seed_base=1000, calibrar=False):
     filas = []
@@ -61,9 +78,15 @@ def resumen(df):
         disparos_media=('disparos', 'mean'),
         disparos_std=('disparos', 'std'),
         eficiencia=('eficiencia', 'mean'),
+        optimas_pct=('optimo', lambda x: 100 * x.mean()),
+        brecha_media=('brecha', 'mean'),
         ms_jugada=('ms_por_jugada', 'mean'),
+        tiempo_partida_s=('tiempo_total_s', 'mean'),
+        evaluaciones_media=('evaluaciones', 'mean'),
+        memoria_max=('memoria_max', 'max'),
     ).round(2)
     return out
+
 
 
 def percentiles(df):
