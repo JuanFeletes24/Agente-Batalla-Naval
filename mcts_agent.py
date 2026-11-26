@@ -43,12 +43,14 @@ class NodoMCTS:
         self.valor_accion[accion] = self.valor_accion.get(accion, 0.0) + recompensa
 
 class AgenteMCTS(Agente):
-    def __init__(self, seed: int = None, config=None, n_simulaciones: int = 200, c_param: float = 1.414):
-        super().__init__(name="MCTS", seed=seed, config=config)
+    def __init__(self, seed: int = None, config=None, n_simulaciones: int = 200, c_param: float = 1.414,
+                 heuristica: str = 'paridad_colineal', nombre: str = "MCTS (Paridad+Colineal)"):
+        super().__init__(name=nombre, seed=seed, config=config)
         self.n_simulaciones = n_simulaciones
         self.c_param = c_param
         self.flota_config = dict(config.flota) if config is not None else dict(FLOTA_DEFAULT)
         self.permitir_adyacentes = True if config is None else config.permitir_adyacentes
+        self.heuristica = heuristica
 
     def _barcos_restantes(self, percepts:dict) -> list:
         if percepts['barcos_vivos'] is not None:
@@ -129,7 +131,7 @@ class AgenteMCTS(Agente):
         return tablero_hip, posiciones_barcos
 
 
-    def _acciones_candidatas(self, tablero_sim: np.ndarray) -> list:
+    def _acciones_candidatas(self, tablero_sim: np.ndarray, min_barco: int = 2) -> list:
         alineadas = set()
         vecinas = set()
         filas, cols = tablero_sim.shape
@@ -140,7 +142,8 @@ class AgenteMCTS(Agente):
                 (rr, cc) = (r + dr, c + dc)
                 if 0 <= rr < filas and 0 <= cc < cols and tablero_sim[rr, cc] == DESCONOCIDO:
                     pr, pc = r - dr, c - dc
-                    if 0 <= pr < filas and 0 <= pc < cols and tablero_sim[pr, pc] == TOCADO:
+                    if (self.heuristica == 'paridad_colineal'
+                            and 0 <= pr < filas and 0 <= pc < cols and tablero_sim[pr, pc] == TOCADO):
                         alineadas.add((rr, cc))
                     else:
                         vecinas.add((rr, cc))
@@ -153,9 +156,13 @@ class AgenteMCTS(Agente):
             self.rng.shuffle(vecinas)
             return vecinas
         
-        libres = self.casillas_libres(tablero_sim) 
-        par = [rc for rc in libres if (rc[0] + rc[1]) % 2 == 0]
-        res = par if par else libres
+        libres = self.casillas_libres(tablero_sim)
+        if self.heuristica == 'paridad_colineal':
+            paso = max(1, min_barco)
+            par = [rc for rc in libres if (rc[0] + rc[1]) % paso == 0]
+            res = par if par else libres
+        else:
+            res = libres
         self.rng.shuffle(res)
         return res
 
@@ -184,13 +191,14 @@ class AgenteMCTS(Agente):
 
         for _ in range(self.n_simulaciones):
             longitudes = self._barcos_restantes(percepts)
+            min_barco = min(longitudes) if longitudes else 2
             tablero_hip, pos_barcos = self._generar_hipotesis(tablero_obs, longitudes)
             tablero_sim = tablero_obs.copy()
 
             nodo = raiz
             camino = []
             for _ in range(3):
-                cand = self._acciones_candidatas(tablero_sim)
+                cand = self._acciones_candidatas(tablero_sim, min_barco)
                 if not cand or (pos_barcos and all(tablero_sim[r, c] == HUNDIDO for b in pos_barcos for r, c in b)):
                     break
                 accion = nodo.seleccionar_accion(cand, self.c_param)
@@ -210,7 +218,7 @@ class AgenteMCTS(Agente):
             factor = 1.0
 
             for _ in range(5):
-                cand = self._acciones_candidatas(tablero_sim)
+                cand = self._acciones_candidatas(tablero_sim, min_barco)
                 if not cand or (pos_barcos and all(tablero_sim[r, c] == HUNDIDO for b in pos_barcos for r, c in b)):
                     break
                 acc_r = cand[int(self.rng.integers(len(cand)))]
@@ -305,7 +313,8 @@ class AgenteMCTS(Agente):
                      'nodos en el arbol': u['nodos'],
                      'acción elegida': coord_a_texto(*u['elegida']) if u.get('elegida') else '-',
                      'nodos expandidos': expandidos,
-                     'nodos en frontera': u['nodos'] - expandidos
+                     'nodos en frontera': u['nodos'] - expandidos,
+                     'heuristica': self.heuristica,
                      },
             'arbol': self._resumen_arbol(raiz, u.get('elegida')),
             'acciones_raiz': self._acciones_raiz(raiz),
@@ -323,3 +332,8 @@ class AgenteMCTS(Agente):
             return 1 + sum(AgenteMCTS._contar_expandidos(h) for h in nodo.hijos.values())
 
     
+class AgenteMCTSVecindad(AgenteMCTS):
+    """Variante de MCTS con heuristica simple (solo vecindad ortogonal, sin paridad ni colinealidad)."""
+    def __init__(self, seed: int = None, config=None, n_simulaciones: int = 200, c_param: float = 1.414):
+        super().__init__(seed=seed, config=config, n_simulaciones=n_simulaciones,
+                         c_param=c_param, heuristica='vecindad', nombre="MCTS (Vecindad)")

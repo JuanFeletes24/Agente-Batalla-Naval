@@ -282,7 +282,7 @@ class PestanaArbol(QWidget):
         self.sincronizar()
         clave, interno, pos, total = self.origen.interno_actual()
         self.tabla.setRowCount(0)
-        if clave != 'mcts':
+        if not str(clave).startswith('mcts'):
             self._vacio("Elige el agente MCTS en la pestaña «Ver agente» para ver su árbol.")
             return
         if not interno or not interno.get('arbol'):

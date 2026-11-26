@@ -166,8 +166,9 @@ def _registrar_dqn():
 
 _registrar_dqn()
 
-from mcts_agent import AgenteMCTS
+from mcts_agent import AgenteMCTS, AgenteMCTSVecindad
 AGENTES['mcts'] = AgenteMCTS
+AGENTES['mcts_vecindad'] = AgenteMCTSVecindad
 
 from bayes_agent import AgenteBayesiano
 AGENTES['bayes'] = AgenteBayesiano
