@@ -21,16 +21,21 @@ import numpy as np
 
 from agents import AGENTES
 from ambientes import BatallaNavalEnv
-from dificultad import NIVELES
+from instancia import Instancia
 from utils import mensaje_feedback
 
 
 class SesionAgente:
 
-    def __init__(self, clave_agente: str, nivel: str, seed: int):
+    def __init__(self, clave_agente: str, nivel: str, seed: int, instancia: Instancia = None):
+        """
+        'nivel' es la clave de un nivel predefinido. Con 'instancia' (p. ej. creada en el
+        editor, con la flota colocada a mano) se usa esa en lugar del nivel.
+        """
         self.seed = seed
-        self.config = NIVELES[nivel]
-        self.env = BatallaNavalEnv(config=self.config, seed=seed)     # entorno "en vivo"
+        self.instancia = instancia if instancia is not None else Instancia.de_nivel(nivel)
+        self.config = self.instancia.config
+        self.env = self.instancia.crear_env(seed)                     # entorno "en vivo"
         self.agente = AGENTES[clave_agente](config=self.config)
         self.agente.restart(seed=seed)                   # puede lanzar FileNotFoundError (DQN sin modelo)
         self.obs = self.env.para_sentidos()
@@ -104,7 +109,7 @@ class SesionAgente:
         if self.en_vivo:
             return self.env
         if self._env_pasado is None or self._pos_pasado > self.posicion:
-            self._env_pasado = BatallaNavalEnv(config=self.config, seed=self.seed)
+            self._env_pasado = self.instancia.crear_env(self.seed)
             self._pos_pasado = 0
         while self._pos_pasado < self.posicion:            # avanza incrementalmente
             self._env_pasado.step(self.historial[self._pos_pasado]['coord'])

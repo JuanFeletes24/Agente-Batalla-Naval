@@ -3,8 +3,10 @@ Estado y reglas de una partida para una persona, sin ninguna dependencia de inte
 Lo usa app_qt.py (y se puede reutilizar desde cualquier otra interfaz).
 """
 
-from ambientes import BatallaNavalEnv, DESCONOCIDO
-from dificultad import NIVELES
+import random
+
+from ambientes import DESCONOCIDO
+from instancia import Instancia
 from utils import coord_a_texto, mensaje_feedback, calificacion
 
 MENSAJE_INICIAL = "Haz clic en una casilla del tablero para disparar."
@@ -19,13 +21,21 @@ class Partida:
 
     # -- ciclo de vida -------------------------------------------------------
     def nuevo_nivel(self, nivel: str, seed: int = None):
-        self.nivel = nivel
-        self.config = NIVELES[nivel]
-        self.env = BatallaNavalEnv(config=self.config, seed=seed)
+        self.nueva_instancia(Instancia.de_nivel(nivel), seed)
+
+    def nueva_instancia(self, instancia: Instancia, seed: int = None):
+        """Empieza una partida en un nivel o en una instancia personalizada (flota manual o al azar)."""
+        self.instancia = instancia
+        self.nivel = instancia.id_registro      # clave del record (una por instancia personalizada)
+        self.config = instancia.config
+        self.seed = seed if seed is not None else random.randint(1, 999_999)
+        self.env = instancia.crear_env(self.seed)
         self._limpiar(MENSAJE_INICIAL)
 
     def nueva(self):
-        self.env.reset()
+        """Otra partida en la misma instancia. Con flota manual queda igual; si no, cambia."""
+        self.seed = random.randint(1, 999_999)   # se guarda: permite repetir la partida con los agentes
+        self.env.reset(self.seed)
         self._limpiar("Nueva partida. ¡Dispara!")
 
     def _limpiar(self, mensaje: str):
@@ -90,8 +100,11 @@ class Partida:
         lim = cfg.max_disparos
         disparos = f"{env.turnos}" if lim is None else f"{env.turnos} / {lim}"
         obs = env.para_sentidos()
+        flota = "flota colocada a mano" if self.instancia.manual else "flota al azar"
         lineas = [f"### Nivel {cfg.nombre}",
                   *[f"- {l}" for l in cfg.descripcion()],
+                  "",
+                  f"**Semilla:** {self.seed} ({flota})",
                   "",
                   f"**Disparos:** {disparos}",
                   "",

@@ -24,14 +24,16 @@ from agents import AGENTES
 from dificultad import NIVELES, ORDEN_NIVELES
 
 
-def jugar_episodio(agente, config, seed):
+def jugar_episodio(agente, config, seed, disposicion=None):
     """
     Juega una partida completa y devuelve sus metricas.
+    Con 'disposicion' [(nombre, fila, col, 'H'|'V'), ...] la flota queda donde el usuario
+    la coloco (instancia manual); si es None se coloca al azar segun la semilla.
 
     El tiempo solo cuenta lo que tarda el agente en decidir (make_decision).
     El estado interno se pide fuera del cronometro para no inflar el tiempo.
     """
-    env = BatallaNavalEnv(config=config, seed=seed)
+    env = BatallaNavalEnv(config=config, seed=seed, disposicion=disposicion)
     obs = env.para_sentidos()
     agente.restart(seed=seed)
     tiempo = 0.0

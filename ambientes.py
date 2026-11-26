@@ -54,7 +54,8 @@ class BatallaNavalEnv:
     """
 
     def __init__(self, filas: int = 10, columnas: int = 10, flota: dict = None,
-                 seed: int = None, config: ConfigDificultad = None):
+                 seed: int = None, config: ConfigDificultad = None,
+                 disposicion: list = None):
         if config is None:
             config = ConfigDificultad(
                 nombre="Personalizado", filas=filas, columnas=columnas,
@@ -76,6 +77,11 @@ class BatallaNavalEnv:
         self.agotado = False
         self.recompensa_acumulada = 0
         self.ultimo_feedback = None
+        # disposicion manual de la flota: lista de (nombre, fila, col, 'H'|'V').
+        # Si existe, reset() la usa en lugar de colocar la flota al azar.
+        self.disposicion_fija = None
+        if disposicion is not None:
+            self.fijar_disposicion(disposicion)
         self.reset(seed)
 
     # ---- colocacion de la flota -------------------------------------------
@@ -154,6 +160,44 @@ class BatallaNavalEnv:
                 return
         raise RuntimeError("No se pudo colocar la flota con esta configuracion")
 
+    def _colocar_lista(self, disposicion: list) -> None:
+        """Coloca exactamente la flota indicada; lanza ValueError si no es valida."""
+        nombres = [d[0] for d in disposicion]
+        if sorted(nombres) != sorted(self.flota_config):
+            raise ValueError("La disposicion debe contener exactamente los barcos de la flota: "
+                             + ", ".join(self.flota_config))
+        orden = list(self.flota_config)
+        self.tablero_oculto.fill(0)
+        self.barcos = []
+        for nombre, r, c, o in sorted(disposicion, key=lambda d: orden.index(d[0])):
+            if not self.colocar_barco(nombre, r, c, o):
+                self.tablero_oculto.fill(0)
+                self.barcos = []
+                raise ValueError(f"Posicion invalida para {nombre}: fila {r}, columna {c}, "
+                                 f"orientacion {o}")
+
+    def fijar_disposicion(self, disposicion: list) -> None:
+        """
+        Fija una disposicion manual de la flota [(nombre, fila, col, 'H'|'V'), ...].
+        Se valida al instante y reset() la conserva en lugar de generar una al azar.
+        """
+        lista = [(str(n), int(r), int(c), str(o).upper()) for n, r, c, o in disposicion]
+        self._colocar_lista(lista)
+        self.disposicion_fija = lista
+
+    def limpiar_disposicion(self) -> None:
+        """Vuelve a la colocacion aleatoria (efecto en el proximo reset)."""
+        self.disposicion_fija = None
+
+    def disposicion_actual(self) -> list:
+        """Disposicion de la flota colocada ahora: [(nombre, fila, col, 'H'|'V'), ...]."""
+        salida = []
+        for b in self.barcos:
+            r, c = b.posiciones[0]
+            horizontal = len(b.posiciones) > 1 and b.posiciones[0][0] == b.posiciones[1][0]
+            salida.append((b.nombre, r, c, 'H' if horizontal else 'V'))
+        return salida
+
     # ---- ciclo de vida -----------------------------------------------------
 
     def reset(self, seed: int = None) -> dict:
@@ -173,7 +217,10 @@ class BatallaNavalEnv:
         self.recompensa_acumulada = 0
         self.ultimo_feedback = None
 
-        self.colocar_flota_aleatoria()
+        if self.disposicion_fija is not None:
+            self._colocar_lista(self.disposicion_fija)
+        else:
+            self.colocar_flota_aleatoria()
         return self.para_sentidos()
 
     def acciones_aplicables(self) -> list:

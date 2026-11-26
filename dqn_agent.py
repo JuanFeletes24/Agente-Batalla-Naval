@@ -24,9 +24,9 @@ from agents import Agente
 CARPETA_MODELOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 
 
-# ---------------------------------------------------------------------------
+
 # Representacion del estado
-# ---------------------------------------------------------------------------
+
 
 def codificar(tablero: np.ndarray) -> np.ndarray:
     """tablero (H, W) con valores -1/0/1/2  ->  array uint8 (4, H, W) de ceros y unos."""
@@ -34,9 +34,8 @@ def codificar(tablero: np.ndarray) -> np.ndarray:
                      tablero == TOCADO, tablero == HUNDIDO]).astype(np.uint8)
 
 
-# ---------------------------------------------------------------------------
+
 # Red
-# ---------------------------------------------------------------------------
 
 class RedQ(nn.Module):
     """Convolucional completa: (B, 4, H, W) -> (B, H, W), un Q por casilla."""
@@ -62,9 +61,7 @@ def q_enmascarado(q: torch.Tensor, estado: torch.Tensor) -> torch.Tensor:
     return q.masked_fill(~legal, float('-inf'))
 
 
-# ---------------------------------------------------------------------------
 # Guardar / cargar modelos
-# ---------------------------------------------------------------------------
 
 def clave_nivel(config) -> str:
     """'Fácil' -> 'facil' (coincide con las claves de NIVELES)."""
@@ -109,9 +106,7 @@ def modelos_disponibles() -> list:
     return [f for f in os.listdir(CARPETA_MODELOS) if f.startswith("dqn_") and f.endswith(".pt")]
 
 
-# ---------------------------------------------------------------------------
 # Agente que juega con un modelo ya entrenado
-# ---------------------------------------------------------------------------
 
 class AgenteDQN(Agente):
     """

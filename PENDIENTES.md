@@ -31,21 +31,23 @@ Los lineamientos exigen: *"Animación del proceso de búsqueda: nodos expandidos
 
 ---
 
-## 2. Interfaz Gráfica e Interactividad Faltante *(Requisito Sección 2.2 — 10 pts)*
+## 2. Interfaz Gráfica e Interactividad *(Requisito Sección 2.2 — 10 pts)*
 
-- [ ] **Generador y Editor de Instancias en la GUI (`app_qt.py` + `ambientes.py`)**:
-  - Los lineamientos exigen: *"el usuario debe poder cambiar el estado inicial del entorno, los parámetros de configuración (si aplica), y la dificultad"*.
-  - **Configurador de parámetros**: Permitir crear una configuración personalizada desde la interfaz (dimensiones `filas x columnas`, composición de la flota, límite de disparos, ruido del sonar, barcos adyacentes, mostrar/ocultar flota).
-  - **Editor manual del estado inicial**: Permitir al usuario colocar manualmente los barcos en el tablero (clic y rotación H/V) y guardar esa disposición inicial para que los agentes la resuelvan sin que `reset()` la reemplace por una aleatoria.
-- [ ] **Ventana o Pestaña de Comparación de Algoritmos (`app_qt.py`)**:
-  - Los lineamientos exigen: *"Se debe contar con una ventana o modo de comparación que ejecute los algoritmos sobre la misma instancia y presente los resultados en tablas o gráficas"*.
-  - Agregar una tercera pestaña **"Comparar"** en `app_qt.py` que ejecute los agentes registrados sobre la misma semilla/instancia (o sobre un lote de $N$ partidas con las mismas semillas) y muestre en pantalla:
-    - **Tabla comparativa** con todas las métricas requeridas.
-    - **Gráficas comparativas** (p. ej. diagramas de barras o *boxplots* de disparos, tiempos de ejecución, nodos/evaluaciones y memoria).
-- [ ] **Comparación Humano vs. Máquina desde la pestaña "Jugar" *(Opcional recomendado)***:
-  - Mostrar la semilla jugada en *"Jugar"* y añadir un botón al finalizar la partida para ejecutar los agentes sobre esa misma flota y comparar el desempeño del usuario contra los algoritmos.
-
----
+- [x] **Generador y Editor de Instancias en la GUI (`app_qt.py` + `ambientes.py` + `instancia.py` + `editor_instancia.py`)**:
+  - Nueva pestaña **"Editor de instancias"**:
+    - **Configurador de parámetros**: filas × columnas, composición de la flota (añadir, quitar, cambiar longitud, restaurar la clásica), límite de disparos (o sin límite), ruido del sonar, sesgo de colocación aleatoria, barcos adyacentes y mostrar/ocultar la flota restante. Los parámetros incoherentes (p. ej. límite menor que las casillas de barco) se rechazan con un aviso.
+    - **Editor manual del estado inicial**: clic = colocar, clic sobre un barco = moverlo, clic derecho = quitarlo, `R` o rueda = girar H/V; vista previa verde/roja según la validez (solapes y contacto según la regla de adyacencia). Botones *Colocar al azar* y *Limpiar tablero*.
+    - **Persistencia**: guardar/cargar la instancia en JSON.
+  - `BatallaNavalEnv` acepta `disposicion=[(nombre, fila, col, 'H'|'V'), ...]`; con ella `reset()` conserva la flota en lugar de generar una aleatoria.
+  - La instancia del editor aparece como opción **"Personalizada"** en los selectores de nivel de *Jugar*, *Ver agente* y *Comparar* (botones *Jugar / Ver agentes / Comparar en esta instancia*).
+- [x] **Ventana o Pestaña de Comparación de Algoritmos (`app_qt.py` + `comparar.py`)**:
+  - Nueva pestaña **"Comparar"**: elige nivel o instancia personalizada, agentes, partidas por agente y semilla base (la partida *i* usa la semilla *base + i* para todos los agentes; con 1 partida se comparan sobre una única instancia). Se ejecuta en un hilo aparte, con barra de progreso y botón *Cancelar*. Un agente que no puede jugar (p. ej. DQN sin modelo) se reporta sin tumbar a los demás.
+  - **Tabla comparativa** (resalta el mejor valor de cada métrica) con victorias, disparos (media/desv./mín./máx.), eficiencia, óptimas, brecha al óptimo, recompensa acumulada, tiempo por jugada y por partida, evaluaciones y memoria.
+  - **Gráficas**: victorias, boxplot de disparos (con el óptimo teórico), eficiencia, tiempo por partida, evaluaciones y memoria. Exportación de todas las partidas a CSV.
+  - *Pendiente (ver punto 3)*: separar "nodos generados" de "nodos expandidos"; hoy se muestra `evaluaciones` como equivalente a nodos generados.
+- [x] **Comparación Humano vs. Máquina desde la pestaña "Jugar" *(Opcional recomendado)***:
+  - El panel de *Jugar* muestra la **semilla** (y si la flota es manual o al azar). Al terminar la partida se habilita **"Comparar con los agentes"**: todos los agentes juegan exactamente esa flota y se muestra una tabla (resultado, disparos, eficiencia, brecha, ms/jugada) y tu puesto.
+- [x] **Limitación conocida**: el agente DQN solo existe para los niveles entrenados (`models/dqn_<nivel>.pt`); con una instancia personalizada se informa de que no hay modelo y los demás agentes funcionan con normalidad.
 
 ## 3. Métricas Experimentales y Heurísticas *(Requisito Sección 2.2 — 15 pts)*
 
