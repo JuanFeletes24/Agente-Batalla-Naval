@@ -181,11 +181,6 @@ Se genera `models/dqn_<nivel>.pt` (pesos), `models/dqn_<nivel>_log.csv` (curva d
 
 > 📸 **[ESPACIO PARA CAPTURA]** — Subárbol de MCTS con nodo raíz, rama seleccionada, nodos expandidos y nodos frontera diferenciados por color. Archivo: `docs/capturas/06_arbol_mcts.png`
 
-### Pestaña «Comparar» — Tabla de métricas
-
-![Comparar: tabla](docs/capturas/07_comparar_tabla.png)
-
-> 📸 **[ESPACIO PARA CAPTURA]** — Tabla comparativa con victorias, disparos, eficiencia, brecha al óptimo, tiempos, nodos y memoria. Archivo: `docs/capturas/07_comparar_tabla.png`
 
 ### Pestaña «Comparar» — Gráficas
 
@@ -198,12 +193,6 @@ Se genera `models/dqn_<nivel>.pt` (pesos), `models/dqn_<nivel>_log.csv` (curva d
 ![Editor de instancias](docs/capturas/09_editor_instancias.png)
 
 > 📸 **[ESPACIO PARA CAPTURA]** — Editor con parámetros del tablero, flota colocada a mano y vista previa verde/roja de validez. Archivo: `docs/capturas/09_editor_instancias.png`
-
-### Evaluación por consola
-
-![Salida de evaluar.py](docs/capturas/10_evaluar_consola.png)
-
-> 📸 **[ESPACIO PARA CAPTURA]** — Salida de `python evaluar.py` en la terminal. Archivo: `docs/capturas/10_evaluar_consola.png`
 
 ### Curvas de entrenamiento del DQN
 
