@@ -224,7 +224,7 @@ class RenderizadorPygame:
 
     # -- dibujo ---------------------------------------------------------------
     def dibujar(self, env, revelado, ahora, hover=None, final=None, numeros=None, resaltar=None,
-                mapa=None):
+                mapa=None, categorias=None):
         """
         Devuelve la superficie con el tablero.
           hover : (fila, col) bajo el cursor, o None.
@@ -233,6 +233,8 @@ class RenderizadorPygame:
           resaltar: (fila, col) de la ultima jugada (borde amarillo), o None.
           mapa    : matriz (filas, cols) con un valor por casilla (NaN = sin valor) que se
                     dibuja como mapa de calor, o None.
+          categorias: {(fila, col): (R, G, B)} casillas candidatas coloreadas segun la regla
+                    que las propone (p. ej. Caza-Remate), o None.
         """
         self._limpiar(ahora)
         p, t = self.lienzo, self.tile
@@ -245,6 +247,8 @@ class RenderizadorPygame:
         p.blit(self.grid, (MARGEN, MARGEN))
         if mapa is not None:
             self._mapa_calor(mapa)
+        if categorias:
+            self._categorias(categorias)
 
         for r in range(env.filas):
             for c in range(env.columnas):
@@ -344,6 +348,16 @@ class RenderizadorPygame:
                 for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                     self.lienzo.blit(borde, (px + dx, py + dy))
                 self.lienzo.blit(s, (px, py))
+
+    def _categorias(self, categorias):
+        """Relleno translucido y borde del color de la regla en cada casilla candidata."""
+        t = self.tile
+        for (r, c), color in categorias.items():
+            x, y = MARGEN + int(c) * t, MARGEN + int(r) * t
+            celda = pygame.Surface((t, t), pygame.SRCALPHA)
+            celda.fill((*color, 90))
+            self.lienzo.blit(celda, (x, y))
+            pygame.draw.rect(self.lienzo, color, (x + 2, y + 2, t - 4, t - 4), 3)
 
     def _numero(self, n, x, y):
         """Numero con contorno oscuro: legible sobre agua, sprites y explosiones."""

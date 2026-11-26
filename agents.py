@@ -75,6 +75,13 @@ class RandomAgent(Agente):
                 'info': {'casillas libres': self._n}, 'evaluaciones': 0, 'memoria': 0}
 
 
+REGLAS_CAZA = {
+    'caza': 'Caza por paridad de ajedrez',
+    'ortogonal': 'Remate ortogonal simple',
+    'colineal': 'Remate colineal (impactos alineados)',
+}
+
+
 class AgenteCazaRemate(Agente):
     """
     Heuristica clasica "hunt & target":
@@ -88,14 +95,17 @@ class AgenteCazaRemate(Agente):
 
     def make_decision(self, percepts: dict) -> tuple:
         t = percepts['tablero_agente']
-        objetivo, puntaje = self._remate(t)
+        objetivo, puntaje, colineales = self._remate(t)
         if objetivo is not None:
-            self._ult = {'modo': 'remate', 'celdas': puntaje, 'tablero': t}
+            reglas = {rc: ('colineal' if rc in colineales else 'ortogonal') for rc in puntaje}
+            self._ult = {'modo': 'remate', 'celdas': puntaje, 'tablero': t,
+                         'reglas': reglas, 'regla': reglas[objetivo]}
             return objetivo
         libres = self.casillas_libres(t)
         paridad = [rc for rc in libres if (rc[0] + rc[1]) % 2 == 0]
         pool = paridad if paridad else libres
-        self._ult = {'modo': 'caza', 'celdas': {rc: 1.0 for rc in pool}, 'tablero': t}
+        self._ult = {'modo': 'caza', 'celdas': {rc: 1.0 for rc in pool}, 'tablero': t,
+                     'reglas': {rc: 'caza' for rc in pool}, 'regla': 'caza'}
         return pool[int(self.rng.integers(len(pool)))]
 
     def estado_interno(self) -> dict:
@@ -104,13 +114,19 @@ class AgenteCazaRemate(Agente):
         for (r, c), v in u['celdas'].items():
             mapa[r, c] = v
         tipo = 'puntaje de remate' if u['modo'] == 'remate' else 'casillas de la caza (ajedrez)'
-        return {'mapa': mapa, 'tipo_mapa': tipo,
-                'info': {'modo': u['modo'], 'candidatas': len(u['celdas'])},
+        por_regla = {k: sum(1 for v in u['reglas'].values() if v == k) for k in REGLAS_CAZA}
+        info = {'modo': u['modo'], 'candidatas': len(u['celdas']),
+                'regla activada': REGLAS_CAZA[u['regla']]}
+        info.update({f'candidatas de "{REGLAS_CAZA[k]}"': n for k, n in por_regla.items() if n})
+        return {'mapa': mapa, 'tipo_mapa': tipo, 'info': info,
+                'categorias': dict(u['reglas']),            # {(fila, col): clave de regla}
+                'leyenda': dict(REGLAS_CAZA), 'categoria_activa': u['regla'],
                 'evaluaciones': len(u['celdas']), 'memoria': len(u['celdas'])}
 
     def _remate(self, t):
         filas, cols = t.shape
         puntaje = {}
+        colineales = set()           # casillas con al menos un par de impactos alineados
         for r, c in np.argwhere(t == TOCADO):
             for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                 rr, cc = r + dr, c + dc
@@ -120,11 +136,13 @@ class AgenteCazaRemate(Agente):
                 pr, pc = r - dr, c - dc
                 alineado = 0 <= pr < filas and 0 <= pc < cols and t[pr][pc] == TOCADO
                 puntaje[(rr, cc)] = puntaje.get((rr, cc), 0) + (3 if alineado else 1)
+                if alineado:
+                    colineales.add((rr, cc))
         if not puntaje:
-            return None, None
+            return None, None, set()
         mejor = max(puntaje.values())
         candidatos = [rc for rc, p in puntaje.items() if p == mejor]
-        return candidatos[int(self.rng.integers(len(candidatos)))], puntaje
+        return candidatos[int(self.rng.integers(len(candidatos)))], puntaje, colineales
 
 
 AGENTES = {

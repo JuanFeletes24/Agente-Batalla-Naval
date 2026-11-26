@@ -16,7 +16,7 @@ Documento de control basado en la auditoría del código actual frente a **Linea
 
 Los lineamientos exigen: *"Animación del proceso de búsqueda: nodos expandidos, frontera, nodos visitados o reglas activadas, diferenciados visualmente"* y *"Visualización del estado interno del algoritmo en pantalla"*.
 
-- [ ] **Visualización parcial de la expansión del árbol en MCTS (`mcts_agent.py` + `app_qt.py`)**:
+- [x] **Visualización parcial de la expansión del árbol en MCTS (`mcts_agent.py` + `app_qt.py`)**:
   - Actualmente MCTS solo proyecta el mapa de calor de valores $Q$ en la raíz, pero no muestra la estructura del árbol explorado.
   - **En `mcts_agent.py` (`estado_interno`)**: Exportar un resumen compacto del subárbol de la jugada actual (no el árbol completo para mantener legibilidad), incluyendo:
     - El **nodo raíz** ($N$ total de simulaciones).
@@ -24,9 +24,9 @@ Los lineamientos exigen: *"Animación del proceso de búsqueda: nodos expandidos
     - Sus ramas hijas de observación (`agua`, `impacto`, `hundido`) y las principales respuestas del segundo nivel.
     - Etiqueta del tipo de nodo para diferenciarlos por color: **raíz**, **rama seleccionada**, **nodos internos expandidos** ($N > 1$) y **nodos frontera / hojas recién creadas** ($N = 1$).
   - **En `app_qt.py` (`PestanaAgente`)**: Añadir un panel o subvista gráfica que dibuje dinámicamente este subárbol en cada jugada (actualizándose también al avanzar paso a paso o retroceder con `|◀ Atrás`).
-- [ ] **Diferenciación visual de reglas activadas en Caza-Remate (`agents.py` + `app_qt.py`)**:
+- [x] **Diferenciación visual de reglas activadas en Caza-Remate (`agents.py` + `app_qt.py`)**:
   - Mostrar explícitamente qué regla se disparó en el turno actual (*Regla de caza por paridad de ajedrez*, *Regla de remate ortogonal simple* o *Regla de remate colineal por impactos alineados*) diferenciando en color las casillas candidatas de cada regla.
-- [ ] **Detalle visual en DQN (`dqn_agent.py` + `app_qt.py`)**:
+- [x] **Detalle visual en DQN (`dqn_agent.py` + `app_qt.py`)**:
   - Mantener el mapa de calor de valores $Q(s, a)$ e indicar claramente en el panel interno la acción $\arg\max Q$, el rango $[Q_{\min}, Q_{\max}]$ y cuántas casillas fueron enmascaradas ($Q = -\infty$).
 
 ---

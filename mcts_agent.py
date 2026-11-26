@@ -3,6 +3,7 @@ import numpy as np
 from itertools import combinations
 from ambientes import DESCONOCIDO, AGUA, TOCADO, HUNDIDO, FLOTA_DEFAULT
 from agents import Agente
+from utils import coord_a_texto
 
 class NodoMCTS:
     def __init__(self, padre=None, accion_entrada=None, obs_entrada=None):
@@ -10,6 +11,7 @@ class NodoMCTS:
         self.accion_entrada = accion_entrada
         self.obs_entrada = obs_entrada
         self.visitas = 0
+        self.llegadas = 0          # veces que una simulacion llego a este nodo (solo para visualizar)
         self.valor_accion = {}
         self.visitas_accion = {}
         self.hijos = {}
@@ -32,6 +34,7 @@ class NodoMCTS:
     def obtener_o_crear_hijo(self, accion:tuple, obs:str) -> 'NodoMCTS':
         if (accion, obs) not in self.hijos:
             self.hijos[(accion, obs)] = NodoMCTS(padre=self, accion_entrada=accion, obs_entrada=obs)
+        self.hijos[(accion, obs)].llegadas += 1
         return self.hijos[(accion, obs)]
 
     def actualizar(self, accion:tuple, recompensa:float):
@@ -230,7 +233,57 @@ class AgenteMCTS(Agente):
         if not raiz.visitas_accion:
             return self.casillas_libres(tablero_obs)[0]
 
-        return max(raiz.visitas_accion, key=lambda a: (raiz.visitas_accion[a], raiz.valor_accion[a] / raiz.visitas_accion[a]))
+        elegida = max(raiz.visitas_accion, key=lambda a: self._clave_accion(raiz, a))
+        self._ult['elegida'] = elegida
+        return elegida
+
+    @staticmethod
+    def _clave_accion(nodo: NodoMCTS, accion: tuple) -> tuple:
+        """Criterio de la jugada final: mas visitas y, a igualdad, mayor Q medio."""
+        return (nodo.visitas_accion[accion], nodo.valor_accion[accion] / nodo.visitas_accion[accion])
+
+    # -- resumen del arbol para la interfaz -----------------------------------------------
+    @staticmethod
+    def _nodo_accion(nodo: NodoMCTS, accion: tuple, tipo: str = None) -> dict:
+        n = nodo.visitas_accion[accion]
+        return {'tipo': tipo or ('interno' if n > 1 else 'frontera'),
+                'etiqueta': coord_a_texto(*accion), 'accion': accion,
+                'N': n, 'Q': nodo.valor_accion[accion] / n, 'hijos': []}
+
+    def _acciones_raiz(self, raiz: NodoMCTS, k: int = 8) -> list:
+        """Las k acciones mas visitadas de la raiz como [{'etiqueta', 'N', 'Q'}], para la tabla."""
+        ranking = sorted(raiz.visitas_accion, key=lambda a: self._clave_accion(raiz, a), reverse=True)
+        return [{'etiqueta': coord_a_texto(*a), 'N': raiz.visitas_accion[a],
+                 'Q': raiz.valor_accion[a] / raiz.visitas_accion[a]} for a in ranking[:k]]
+
+    def _resumen_arbol(self, raiz: NodoMCTS, elegida: tuple, k: int = 3, k2: int = 2) -> dict:
+        """
+        Subarbol compacto de la jugada: raiz -> top-3 acciones mas visitadas (siempre incluye la
+        elegida) -> observaciones (agua / impacto / hundido) -> top-k2 acciones del segundo nivel.
+        Solo contiene datos simples (no guarda nodos vivos), asi se puede conservar por jugada.
+        Tipos: 'raiz', 'seleccionada' (accion elegida), 'interno' (N > 1 o con hijos ya expandidos)
+        y 'frontera' (hoja recien creada: N <= 1 y sin expandir).
+        """
+        resumen = {'tipo': 'raiz', 'etiqueta': 'Raíz', 'N': raiz.visitas, 'Q': None, 'hijos': []}
+        ranking = sorted(raiz.visitas_accion, key=lambda a: self._clave_accion(raiz, a), reverse=True)
+        top = ranking[:k]
+        if elegida is not None and elegida not in top:
+            top = top[:-1] + [elegida] if top else [elegida]
+        for accion in top:
+            nodo_a = self._nodo_accion(raiz, accion, 'seleccionada' if accion == elegida else None)
+            for obs in ('agua', 'impacto', 'hundido'):
+                hijo = raiz.hijos.get((accion, obs))
+                if hijo is None:
+                    continue
+                expandido = bool(hijo.visitas_accion)
+                nodo_o = {'tipo': 'interno' if expandido else 'frontera', 'etiqueta': obs,
+                          'obs': obs, 'N': hijo.llegadas, 'Q': None, 'hijos': []}
+                top2 = sorted(hijo.visitas_accion, key=lambda a: self._clave_accion(hijo, a),
+                              reverse=True)[:k2]
+                nodo_o['hijos'] = [self._nodo_accion(hijo, a2) for a2 in top2]
+                nodo_a['hijos'].append(nodo_o)
+            resumen['hijos'].append(nodo_a)
+        return resumen
 
     def estado_interno(self) -> dict:
         if not hasattr(self, '_ult'):
@@ -245,16 +298,11 @@ class AgenteMCTS(Agente):
         return {
             'mapa': mapa,
             'tipo_mapa': 'valor Q estimado (MCTS)',
-            'info': {'simulaciones':raiz.visitas, 'candidatas exploradas':len(raiz.visitas_accion), 'nodos en el arbol': u['nodos']},
+            'info': {'simulaciones': raiz.visitas, 'candidatas exploradas': len(raiz.visitas_accion),
+                     'nodos en el arbol': u['nodos'],
+                     'acción elegida': coord_a_texto(*u['elegida']) if u.get('elegida') else '-'},
+            'arbol': self._resumen_arbol(raiz, u.get('elegida')),
+            'acciones_raiz': self._acciones_raiz(raiz),
             'evaluaciones': u['evals'],
             'memoria': u['nodos']
         }
- 
-
-
-  
-
-  
-
-  
-
