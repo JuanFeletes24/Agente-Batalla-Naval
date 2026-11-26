@@ -47,7 +47,7 @@ def evaluar(agentes, niveles, episodios=100, seed_base=1000, calibrar=False):
     for nivel in niveles:
         cfg = NIVELES[nivel].sin_limite() if calibrar else NIVELES[nivel]
         for nombre_ag, clase in agentes.items():
-            agente = clase()
+            agente = clase(config=cfg)
             for i in range(episodios):
                 res = jugar_episodio(agente, cfg, seed_base + i)
                 filas.append({'nivel': nivel, 'agente': nombre_ag, 'seed': seed_base + i, **res})
