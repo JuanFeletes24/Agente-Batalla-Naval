@@ -143,56 +143,37 @@ Se genera `models/dqn_<nivel>.pt` (pesos), `models/dqn_<nivel>_log.csv` (curva d
 
 ## Capturas de pantalla
 
-> **📸 Pendiente:** guardar cada captura en `docs/capturas/` con el nombre indicado. Al agregar el archivo, la imagen aparecerá automáticamente en este README.
-
 ### Pestaña «Jugar»
 
 ![Pestaña Jugar](docs/capturas/01_jugar.png)
-
-> 📸 **[ESPACIO PARA CAPTURA]** — Partida en curso contra el tablero (se ven aciertos, agua y panel con la semilla). Archivo: `docs/capturas/01_jugar.png`
 
 ### Comparación Humano vs. Máquina
 
 ![Humano vs Máquina](docs/capturas/02_humano_vs_maquina.png)
 
-> 📸 **[ESPACIO PARA CAPTURA]** — Diálogo/tabla que aparece al terminar una partida con tu puesto frente a los agentes. Archivo: `docs/capturas/02_humano_vs_maquina.png`
-
 ### Pestaña «Ver agente» — Caza-Remate
 
 ![Ver agente: Caza-Remate](docs/capturas/03_ver_agente_caza.png)
-
-> 📸 **[ESPACIO PARA CAPTURA]** — Agente Caza-Remate con las casillas candidatas coloreadas por regla activada (paridad, remate ortogonal, remate colineal). Archivo: `docs/capturas/03_ver_agente_caza.png`
 
 ### Pestaña «Ver agente» — Mapa de calor (Bayesiano)
 
 ![Ver agente: mapa de calor bayesiano](docs/capturas/04_ver_agente_bayes.png)
 
-> 📸 **[ESPACIO PARA CAPTURA]** — Agente Bayesiano con el mapa de calor de probabilidad de barco y el panel de estado interno. Archivo: `docs/capturas/04_ver_agente_bayes.png`
-
 ### Pestaña «Ver agente» — DQN
 
 ![Ver agente: DQN](docs/capturas/05_ver_agente_dqn.png)
-
-> 📸 **[ESPACIO PARA CAPTURA]** — Agente DQN con el mapa de valores Q, la acción argmax Q, el rango [Qmin, Qmax] y casillas enmascaradas. Archivo: `docs/capturas/05_ver_agente_dqn.png`
 
 ### Pestaña «Árbol MCTS»
 
 ![Árbol MCTS](docs/capturas/06_arbol_mcts.png)
 
-> 📸 **[ESPACIO PARA CAPTURA]** — Subárbol de MCTS con nodo raíz, rama seleccionada, nodos expandidos y nodos frontera diferenciados por color. Archivo: `docs/capturas/06_arbol_mcts.png`
-
-
 ### Pestaña «Comparar» — Gráficas
 
 ![Comparar: gráficas](docs/capturas/08_comparar_graficas.png)
 
-> 📸 **[ESPACIO PARA CAPTURA]** — Gráficas de victorias, boxplot de disparos, convergencia de recompensa, tiempo de CPU, nodos y memoria. Archivo: `docs/capturas/08_comparar_graficas.png`
-
 ### Pestaña «Editor de instancias»
 
 ![Editor de instancias](docs/capturas/09_editor_instancias.png)
-
-> 📸 **[ESPACIO PARA CAPTURA]** — Editor con parámetros del tablero, flota colocada a mano y vista previa verde/roja de validez. Archivo: `docs/capturas/09_editor_instancias.png`
 
 ### Curvas de entrenamiento del DQN
 
