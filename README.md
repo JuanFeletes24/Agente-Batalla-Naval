@@ -37,6 +37,9 @@ Batalla Naval planteada como un problema de inteligencia artificial: un agente d
 
 ```
 Agente-Batalla-Naval/
+├── assets/                      # Sprites y fondo de la interfaz
+├── models/                      # Pesos (.pt), logs (.csv) y curvas (.png) del DQN
+├── docs/capturas/               # Capturas de pantalla usadas en este README
 ├── app_qt.py                    # Interfaz gráfica principal (punto de entrada)
 ├── ambientes.py                 # Entorno BatallaNavalEnv (estados, acciones, transición, objetivo)
 ├── dificultad.py                # Niveles de dificultad (ConfigDificultad)
@@ -57,10 +60,6 @@ Agente-Batalla-Naval/
 ├── test_instancias.py           # Pruebas de la lógica de instancias y comparación
 ├── Notebook_Batalla_Naval.ipynb # Notebook demostrativo
 ├── requirements.txt             # Dependencias
-├── assets/                      # Sprites y fondo de la interfaz
-├── models/                      # Pesos (.pt), logs (.csv) y curvas (.png) del DQN
-├── docs/capturas/               # Capturas de pantalla usadas en este README
-├── PENDIENTES.md                # Control de requisitos del proyecto
 └── LICENSE
 ```
 
@@ -83,7 +82,7 @@ Agente-Batalla-Naval/
    cd Agente-Batalla-Naval
    ```
 
-   > Si descargaste el `.zip`, descomprímelo y entra a la carpeta del proyecto.
+   > Si se descargo el `.zip`, descomprímelo y entra a la carpeta del proyecto.
 
 2. **Crear y activar un entorno virtual** (recomendado)
 
@@ -103,13 +102,7 @@ Agente-Batalla-Naval/
 
    Esto instala `numpy`, `matplotlib`, `pandas`, `pygame-ce`, `PySide6`, `torch` y `jupyter`.
 
-   > **Nota:** `torch` es una descarga grande. Si solo vas a usar los agentes que no son DQN puedes omitirlo; el agente DQN simplemente no aparecerá en la interfaz.
-
-4. **Verificar la instalación** (opcional)
-
-   ```bash
-   python test_instancias.py
-   ```
+   > **Nota:** `torch` Solo es necesario para ejecutar el agente DQN
 
 ---
 
@@ -133,18 +126,6 @@ La ventana tiene cinco pestañas:
 
 **Controles del editor:** clic = colocar, clic sobre un barco = moverlo, clic derecho = quitarlo, `R` o rueda del ratón = girar horizontal/vertical.
 
-### Evaluación por consola
-
-Todos los agentes juegan las mismas partidas (mismas semillas), lo que hace la comparación justa.
-
-```bash
-python evaluar.py                                      # todos los niveles y agentes
-python evaluar.py --episodios 200 --niveles medio dificil
-python evaluar.py --agentes caza mcts --seed 1000
-python evaluar.py --agentes caza --calibrar            # sin límite de disparos
-python evaluar.py --csv resultados.csv                 # guarda todas las partidas
-```
-
 ### Entrenamiento del agente DQN
 
 Los modelos para `facil`, `medio` y `dificil` ya están en `models/`. Para entrenar o reentrenar:
@@ -157,81 +138,41 @@ python entrenar_dqn.py --nivel dificil --dispositivo cuda --batch 256 --actualiz
 
 Se genera `models/dqn_<nivel>.pt` (pesos), `models/dqn_<nivel>_log.csv` (curva de aprendizaje) y `models/dqn_<nivel>.png` (gráfica). Ejecuta `python entrenar_dqn.py --help` para ver todos los parámetros.
 
-> El nivel **Experto** aún no tiene modelo DQN entrenado; en ese nivel (y en instancias personalizadas) el DQN se omite y los demás agentes funcionan con normalidad.
-
-### Notebook
-
-```bash
-jupyter notebook Notebook_Batalla_Naval.ipynb
-```
-
-Recorre la creación de una instancia del entorno, sus atributos y métodos principales (`step`, `reset`, `acciones_aplicables`, `para_sentidos`, `test_objetivo`), las instancias personalizadas y la aplicación de cada algoritmo.
-
----
+> El nivel **Experto** no tiene modelo DQN entrenado; en ese nivel (y en instancias personalizadas) el DQN se omite y los demás agentes funcionan con normalidad.
 
 ## Capturas de pantalla
-
-> **📸 Pendiente:** guardar cada captura en `docs/capturas/` con el nombre indicado. Al agregar el archivo, la imagen aparecerá automáticamente en este README.
 
 ### Pestaña «Jugar»
 
 ![Pestaña Jugar](docs/capturas/01_jugar.png)
 
-> 📸 **[ESPACIO PARA CAPTURA]** — Partida en curso contra el tablero (se ven aciertos, agua y panel con la semilla). Archivo: `docs/capturas/01_jugar.png`
-
 ### Comparación Humano vs. Máquina
 
 ![Humano vs Máquina](docs/capturas/02_humano_vs_maquina.png)
-
-> 📸 **[ESPACIO PARA CAPTURA]** — Diálogo/tabla que aparece al terminar una partida con tu puesto frente a los agentes. Archivo: `docs/capturas/02_humano_vs_maquina.png`
 
 ### Pestaña «Ver agente» — Caza-Remate
 
 ![Ver agente: Caza-Remate](docs/capturas/03_ver_agente_caza.png)
 
-> 📸 **[ESPACIO PARA CAPTURA]** — Agente Caza-Remate con las casillas candidatas coloreadas por regla activada (paridad, remate ortogonal, remate colineal). Archivo: `docs/capturas/03_ver_agente_caza.png`
-
 ### Pestaña «Ver agente» — Mapa de calor (Bayesiano)
 
 ![Ver agente: mapa de calor bayesiano](docs/capturas/04_ver_agente_bayes.png)
-
-> 📸 **[ESPACIO PARA CAPTURA]** — Agente Bayesiano con el mapa de calor de probabilidad de barco y el panel de estado interno. Archivo: `docs/capturas/04_ver_agente_bayes.png`
 
 ### Pestaña «Ver agente» — DQN
 
 ![Ver agente: DQN](docs/capturas/05_ver_agente_dqn.png)
 
-> 📸 **[ESPACIO PARA CAPTURA]** — Agente DQN con el mapa de valores Q, la acción argmax Q, el rango [Qmin, Qmax] y casillas enmascaradas. Archivo: `docs/capturas/05_ver_agente_dqn.png`
-
 ### Pestaña «Árbol MCTS»
 
 ![Árbol MCTS](docs/capturas/06_arbol_mcts.png)
-
-> 📸 **[ESPACIO PARA CAPTURA]** — Subárbol de MCTS con nodo raíz, rama seleccionada, nodos expandidos y nodos frontera diferenciados por color. Archivo: `docs/capturas/06_arbol_mcts.png`
-
-### Pestaña «Comparar» — Tabla de métricas
-
-![Comparar: tabla](docs/capturas/07_comparar_tabla.png)
-
-> 📸 **[ESPACIO PARA CAPTURA]** — Tabla comparativa con victorias, disparos, eficiencia, brecha al óptimo, tiempos, nodos y memoria. Archivo: `docs/capturas/07_comparar_tabla.png`
 
 ### Pestaña «Comparar» — Gráficas
 
 ![Comparar: gráficas](docs/capturas/08_comparar_graficas.png)
 
-> 📸 **[ESPACIO PARA CAPTURA]** — Gráficas de victorias, boxplot de disparos, convergencia de recompensa, tiempo de CPU, nodos y memoria. Archivo: `docs/capturas/08_comparar_graficas.png`
-
 ### Pestaña «Editor de instancias»
 
 ![Editor de instancias](docs/capturas/09_editor_instancias.png)
-
-> 📸 **[ESPACIO PARA CAPTURA]** — Editor con parámetros del tablero, flota colocada a mano y vista previa verde/roja de validez. Archivo: `docs/capturas/09_editor_instancias.png`
-
-### Evaluación por consola
-
-![Salida de evaluar.py](docs/capturas/10_evaluar_consola.png)
-
-> 📸 **[ESPACIO PARA CAPTURA]** — Salida de `python evaluar.py` en la terminal. Archivo: `docs/capturas/10_evaluar_consola.png`
 
 ### Curvas de entrenamiento del DQN
 
@@ -274,19 +215,10 @@ Para agregar un agente nuevo: heredar de `agents.Agente`, implementar `make_deci
 
 ---
 
-## Pruebas
-
-```bash
-python test_instancias.py
-# o, si tienes pytest:
-pytest test_instancias.py
-```
-
----
 
 ## Autores y licencia
 
-Proyecto desarrollado por: **<nombres de los integrantes>**
+Proyecto desarrollado por: Sebastián Rojas – Juan Felipe Rojas – Juan Diego Jiménez
 
 Universidad del Rosario — Representación y solución automática de problemas.
 
