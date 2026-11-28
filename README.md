@@ -39,6 +39,7 @@ Batalla Naval planteada como un problema de inteligencia artificial: un agente d
 Agente-Batalla-Naval/
 ├── assets/                      # Sprites y fondo de la interfaz
 ├── models/                      # Pesos (.pt), logs (.csv) y curvas (.png) del DQN
+├── docs/                        # Informe final del proyecto
 ├── docs/capturas/               # Capturas de pantalla usadas en este README
 ├── app_qt.py                    # Interfaz gráfica principal (punto de entrada)
 ├── ambientes.py                 # Entorno BatallaNavalEnv (estados, acciones, transición, objetivo)
